@@ -1220,9 +1220,13 @@ async function main(): Promise<void> {
     tray?.relabel()
   }
   refreshApplicationMenu()
-  const trayIconPath = development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico')
-  if (process.platform === 'win32') {
-    // The tray is the way back to a hidden window; without it, relaunching the application still focuses it.
+  // Windows ships a multi-size ICO; Linux reads one PNG from the same resources directory.
+  const trayIconPath = development
+    ? join(app.getAppPath(), 'resources', process.platform === 'win32' ? 'tray-windows.ico' : 'tray-linux.png')
+    : join(process.resourcesPath, process.platform === 'win32' ? 'tray.ico' : 'tray-linux.png')
+  // The tray is the way back to a hidden window on Windows and Linux; macOS keeps the Dock.
+  // A Linux desktop without a StatusNotifier host still runs, so an unavailable tray only removes that entry.
+  if (process.platform === 'win32' || process.platform === 'linux') {
     try {
       tray = new DesktopTray({ iconPath: trayIconPath, locale: currentDesktopLocale,
         open: () => { focusPrimaryWindow() }, quit: () => { app.quit() } })

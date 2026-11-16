@@ -162,8 +162,9 @@ export function createElectronBuilderConfig(
     extraResources: [
       { from: buildPaths.runtime, to: 'runtime' },
       { from: fileURLToPath(new URL('../resources/icon-windows.png', import.meta.url)), to: 'icon.png' },
-      // Windows tray bitmaps; macOS keeps the Dock and ships no menu bar icon.
-      ...(packagesWindows ? [{ from: fileURLToPath(new URL('../resources/tray-windows.ico', import.meta.url)), to: 'tray.ico' }] : []),
+      // Windows ships a multi-size ICO and Linux one PNG for the tray; macOS keeps the Dock and ships no menu bar icon.
+      ...(packagesWindows ? [{ from: fileURLToPath(new URL('../resources/tray-windows.ico', import.meta.url)), to: 'tray.ico' }]
+        : packagesLinux ? [{ from: fileURLToPath(new URL('../resources/tray-linux.png', import.meta.url)), to: 'tray-linux.png' }] : []),
     ],
     mac: {
       icon: fileURLToPath(new URL('../resources/icon-macos.png', import.meta.url)),
@@ -259,12 +260,19 @@ export function createElectronBuilderConfig(
     linux: {
       category: 'Development',
       executableName: 'deepseek-harness',
+      // Electron reads the manifest's desktopName as the Wayland app_id and X11 WM_CLASS, while
+      // syncDesktopName names the installed entry after it, so a dock matches the running window to it.
+      syncDesktopName: true,
       // The scalable whale mark lands in hicolor/scalable/apps, which desktop icon themes resolve.
       icon: fileURLToPath(new URL('../resources/icon-linux.svg', import.meta.url)),
       target: ['deb'],
       maintainer: 'DeepSeek <deepseek-harness@deepseek.com>',
       synopsis: 'DeepSeek Harness',
       description: 'Electron desktop shell for a bundled dsh runtime and external plugins',
+    },
+    deb: {
+      // Electron's Linux tray is a StatusNotifierItem published through AppIndicator.
+      recommends: ['libayatana-appindicator3-1'],
     },
     nsis: {
       uninstallDisplayName: '${productName}',

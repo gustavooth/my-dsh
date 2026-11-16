@@ -60,7 +60,7 @@ describe('installer preparation preserves application dependencies', () => {
       const aboutIcon = config.extraResources.find(resource => resource.to === 'icon.png')
       expect(aboutIcon).toBeDefined()
       expect(readFileSync(aboutIcon!.from)).toEqual(readFileSync(new URL('../resources/icon-windows.png', import.meta.url)))
-      // Only the Windows package carries the tray bitmaps; macOS keeps the Dock.
+      // Windows carries the tray ICO; the Linux PNG is asserted with the launcher icon, and macOS keeps the Dock.
       const trayIcon = config.extraResources.find(resource => resource.to === 'tray.ico')
       if (platform === 'win32') {
         expect(readFileSync(trayIcon!.from)).toEqual(readFileSync(new URL('../resources/tray-windows.ico', import.meta.url)))
@@ -104,6 +104,18 @@ describe('installer preparation preserves application dependencies', () => {
     expect(svg).toContain('fill="#4D6BFE"')
     // A launcher icon carries the whale alone, without the wordmark or a background tile.
     expect(svg).not.toContain('<rect')
+    const trayIcon = config.extraResources.find(resource => resource.to === 'tray-linux.png')
+    expect(trayIcon).toBeDefined()
+    expect(readFileSync(trayIcon!.from)).toEqual(readFileSync(new URL('../resources/tray-linux.png', import.meta.url)))
+    // The status area needs AppIndicator, which modern distributions provide through Ayatana.
+    expect(config.deb.recommends).toEqual(['libayatana-appindicator3-1'])
+    // Electron uses the manifest's desktopName as app_id / WM_CLASS, and the package installs the entry
+    // under the same name, so a dock links the running window to its launcher icon.
+    expect(config.linux.syncDesktopName).toBe(true)
+    const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { desktopName?: string }
+    expect(manifest.desktopName).toBe('deepseek-harness')
+    // The launcher name, the entry filename, and Icon= share one identity.
+    expect(manifest.desktopName).toBe(config.linux.executableName)
   })
 
   it('names unsigned Windows artifacts so they cannot pass for release builds', async () => {

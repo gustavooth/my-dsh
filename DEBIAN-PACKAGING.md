@@ -256,7 +256,7 @@ data.tar.xz         # payload comprimido (xz)
   Architecture: amd64
   Depends: libgtk-3-0, libnotify4, libnss3, libxss1, libxtst6,
            xdg-utils, libatspi2.0-0, libuuid1, libsecret-1-0
-  Recommends: libappindicator3-1
+  Recommends: libayatana-appindicator3-1
   Maintainer: DeepSeek <deepseek-harness@deepseek.com>
   Homepage: https://github.com/gustavooth/my-dsh
   Description: DeepSeek Harness
@@ -275,12 +275,17 @@ data.tar.xz         # payload comprimido (xz)
   resources/app.asar              # app + dsh + node_modules
   resources/app.asar.unpacked/    # nativos (.node/.so), engine Office WASM
   resources/runtime/              # Python, pnpm, Node portáteis
+  resources/tray-linux.png        # bitmap 32 px do ícone da bandeja
   resources/apparmor-profile
 /usr/share/applications/deepseek-harness.desktop
 /usr/share/icons/hicolor/scalable/apps/deepseek-harness.svg
 ```
 
 O ícone escalável é a baleia oficial do DeepSeek Harness (`apps/desktop/resources/icon-linux.svg`, derivada de `https://www.deepseek.com/harness/favicon.svg`), instalada em `hicolor/scalable/apps` para que os ambientes desktop a resolvam em qualquer tamanho.
+
+O ícone da bandeja vem de `apps/desktop/resources/tray-linux.png` (baleia rasterizada a 32 px por `render:tray-icon`). O app cria a `Tray` no processo principal em Windows e Linux; clicar no ícone (ou em “Abrir DeepSeek Harness” no menu) restaura a janela, e “Sair” segue a mesma confirmação de encerramento do menu do aplicativo. No Linux, a bandeja é um `StatusNotifierItem` publicado via AppIndicator: o pacote recomenda `libayatana-appindicator3-1` e o ambiente precisa de um host de indicadores (COSMIC e KDE atendem nativamente; GNOME exige a extensão AppIndicator).
+
+O ícone da janela em docks e barras de tarefas vem da associação entre o app em execução e a entrada `.desktop`. `apps/desktop/package.json` declara `"desktopName": "deepseek-harness"`: o Electron publica esse valor como *application ID* no Wayland e como `WM_CLASS` no X11, e `linux.syncDesktopName: true` faz o electron-builder instalar a entrada com o mesmo nome e o mesmo `StartupWMClass`. Sem isso o Electron usa o nome derivado do campo `name` (`deepseek-ai-dsh-desktop.desktop`), que não corresponde a nenhuma entrada instalada: o dock mostra o ícone genérico, a janela não agrupa com o atalho e não dá para fixá-la no dock como as demais aplicações.
 
 `.desktop`:
 
@@ -290,7 +295,7 @@ Name=DeepSeek Harness
 Exec="/opt/DeepSeek Harness/deepseek-harness" %U
 Type=Application
 Icon=deepseek-harness
-StartupWMClass=DeepSeek Harness
+StartupWMClass=deepseek-harness
 Categories=Development;
 MimeType=x-scheme-handler/dsh;
 ```
@@ -418,6 +423,7 @@ O smoke pós-build (§3, Etapa 7) pode falhar na conversão Office por causa da 
 3. **Atualização in-app:** `.deb` não tem feed do `electron-updater`; atualizações via `dpkg`/`apt`.
 4. **Política de update obrigatório:** não suportada no Linux (builds Linux pulam a validação).
 5. **Pipeline de publicação/CI:** upload/rollout/website continuam mac/win; o workflow `linux-package.yml` e a rota em `DESKTOP_PUBLISH_RUNNERS` ainda não existem.
+6. **Bandeja:** depende de um host `StatusNotifierItem`; sem ele (GNOME sem a extensão AppIndicator, por exemplo) o app continua rodando, mas o ícone não aparece e a janela escondida só volta por um novo lançamento.
 
 ---
 
@@ -448,7 +454,9 @@ sudo apt install ./deepseek-harness-0.2.2-rc.3-linux-amd64-unsigned.deb
 
 ## 9. Arquivos do repo alterados para habilitar o Linux/`.deb`
 
-- **Alvo e empacotamento:** `apps/desktop/scripts/desktop-build-paths.mjs` (+`.d.mts`), `package-target.ts`, `desktop-toolchain-preflight.ts`, `desktop-package-environment.mjs` (+`.d.mts`), `linux-package-settings.mjs` (+`.d.mts`), `prepare-runtime.ts`, `prepare-cli.ts`, `prepare-dsh.ts`, `smoke-packaged-runtime.ts`, `electron-builder-config.mjs`
+- **Alvo e empacotamento:** `apps/desktop/scripts/desktop-build-paths.mjs` (+`.d.mts`), `package-target.ts`, `desktop-toolchain-preflight.ts`, `desktop-package-environment.mjs` (+`.d.mts`), `linux-package-settings.mjs` (+`.d.mts`), `prepare-runtime.ts`, `prepare-cli.ts`, `prepare-dsh.ts`, `smoke-packaged-runtime.ts`, `electron-builder-config.mjs`, `render-tray-icon.ts`, `resources/tray-linux.png`
+- **Bandeja:** `apps/desktop/src/tray.ts`, `apps/desktop/src/main.ts`
+- **Identidade no dock:** `apps/desktop/package.json` (`desktopName`), `apps/desktop/scripts/electron-builder-config.mjs` (+`.d.mts`, `linux.syncDesktopName`), `apps/desktop/tests/installer-packaging.spec.ts`
 - **Publisher/tipos:** `apps/desktop-publisher/src/desktop-auto-update-environment.mjs` (+`.d.mts`), `desktop-publish-targets.ts`, `desktop-release-store.ts`
 - **Scripts:** `apps/desktop/scripts/desktop-upload-plan.ts`, `runPnpm` (execução do binário pnpm), `package.json` (raiz e `apps/desktop`), `.env.linux.example`
 - **Smoke/specs:** `apps/desktop/tests/fixtures/runtime-payload-smoke.mjs` (skip do decode `sharp` em Electron/Linux), specs de conjunto de targets

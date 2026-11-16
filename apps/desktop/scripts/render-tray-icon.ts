@@ -1,11 +1,12 @@
 /**
- * Render the Windows tray icon with an enlarged whale from `resources/icon-windows.svg`.
+ * Render the Windows and Linux tray icons from their vector sources.
  *
- * The tray shows the icon at 16 logical pixels, so Windows picks one of the
- * bundled bitmaps by display scale. Each size is rasterized from the vector
- * source separately instead of downscaling one large bitmap, which keeps edges
- * crisp at every scale. The committed `resources/tray-windows.ico` is the output;
- * rerun `pnpm run render:tray-icon` in `apps/desktop` after changing the vector source.
+ * Windows shows the icon at 16 logical pixels, so the ICO bundles one bitmap per
+ * display scale; each size is rasterized from the vector source separately
+ * instead of downscaling one large bitmap, which keeps edges crisp at every
+ * scale. Linux consumes one PNG that the status area scales. The committed
+ * `resources/tray-windows.ico` and `resources/tray-linux.png` are the outputs;
+ * rerun `pnpm run render:tray-icon` in `apps/desktop` after changing either source.
  */
 
 import { readFile, writeFile } from 'node:fs/promises'
@@ -22,8 +23,19 @@ export const TRAY_ICON_PATHS = {
   output: fileURLToPath(new URL('../resources/tray-windows.ico', import.meta.url)),
 } as const
 
-/** Coordinate space of the vector source; sharp's SVG density is scaled against it. */
+/** Linux tray bitmap edge: the status area scales this single PNG to its own size. */
+export const TRAY_LINUX_SIZE = 32
+
+/** Vector source and committed output of the Linux tray icon. */
+export const TRAY_LINUX_PATHS = {
+  source: fileURLToPath(new URL('../resources/icon-linux.svg', import.meta.url)),
+  output: fileURLToPath(new URL('../resources/tray-linux.png', import.meta.url)),
+} as const
+
+/** Coordinate space of the Windows vector source; sharp's SVG density is scaled against it. */
 const SOURCE_EDGE = 1024
+/** Coordinate space of the Linux vector source. */
+const LINUX_SOURCE_EDGE = 512
 const SOURCE_DENSITY = 72
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 const ICON_DIRECTORY_BYTES = 6
@@ -109,6 +121,16 @@ export async function renderTrayIconEntries(svg: Buffer, sizes: readonly number[
   })))
 }
 
+/**
+ * Rasterize the Linux whale mark at the tray bitmap edge.
+ * @param svg - SVG document with a 512-unit square viewBox.
+ * @param size - Bitmap edge to render; defaults to {@link TRAY_LINUX_SIZE}.
+ * @returns the PNG stream written to `resources/tray-linux.png`.
+ */
+export async function renderLinuxTrayIcon(svg: Buffer, size: number = TRAY_LINUX_SIZE): Promise<Buffer> {
+  return await sharp(svg, { density: SOURCE_DENSITY * size / LINUX_SOURCE_EDGE }).resize(size, size).png().toBuffer()
+}
+
 function pngDimensions(png: Buffer): { width: number; height: number } {
   if (png.length < 24 || !png.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)) throw new Error('tray icon: bitmap is not a PNG stream')
   return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) }
@@ -117,7 +139,9 @@ function pngDimensions(png: Buffer): { width: number; height: number } {
 async function main(): Promise<void> {
   const entries = await renderTrayIconEntries(await readFile(TRAY_ICON_PATHS.source))
   await writeFile(TRAY_ICON_PATHS.output, packIco(entries))
+  await writeFile(TRAY_LINUX_PATHS.output, await renderLinuxTrayIcon(await readFile(TRAY_LINUX_PATHS.source)))
   console.info(`tray icon: wrote ${TRAY_ICON_PATHS.output} with ${entries.map(entry => String(entry.size)).join(', ')} px bitmaps`)
+  console.info(`tray icon: wrote ${TRAY_LINUX_PATHS.output} at ${String(TRAY_LINUX_SIZE)} px`)
 }
 
 if (process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1])) await main()

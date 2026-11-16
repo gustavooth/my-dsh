@@ -19,7 +19,8 @@ export interface DesktopElectronBuilderConfig {
   readonly extraResources: readonly [
     { readonly from: string, readonly to: 'runtime' },
     { readonly from: string, readonly to: 'icon.png' },
-    ...{ readonly from: string, readonly to: 'tray.ico' }[],
+    ...({ readonly from: string, readonly to: 'tray.ico' }
+      | { readonly from: string, readonly to: 'tray-linux.png' })[],
   ]
   readonly mac: {
     readonly extendInfo: {
@@ -40,8 +41,12 @@ export interface DesktopElectronBuilderConfig {
   }
   readonly linux: {
     readonly executableName: string
+    readonly syncDesktopName: true
     readonly icon: string
     readonly target: readonly ['deb']
+  }
+  readonly deb: {
+    readonly recommends: readonly string[]
   }
   readonly win: {
     readonly forceCodeSigning: boolean

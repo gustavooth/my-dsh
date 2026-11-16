@@ -846,8 +846,11 @@ describe('desktop main startup', () => {
     harness.ipcOn.mock.calls.find(([channel]) => channel === DESKTOP_IPC.localeChanged)![1](
       { sender, senderFrame: sender.mainFrame }, nextLocale,
     )
+    // Linux also rebuilds the tray menu on a locale change, so the last build call is not the application menu.
     const refreshed = platform === 'win32' ? applicationMenuItems()
-      : harness.menu.mock.lastCall![0][0]!.submenu as MenuItemConstructorOptions[]
+      : harness.menu.mock.calls.map(([template]) => template)
+        .filter(template => Array.isArray(template[0]?.submenu))
+        .at(-1)![0]!.submenu as MenuItemConstructorOptions[]
     expect(refreshed.filter(item => item.role === 'toggleDevTools' && item.visible !== false)).toEqual([
       { role: 'toggleDevTools', label: nextLocale === 'en' ? en.toggleDevToolsMenu : zh.toggleDevToolsMenu },
     ])
@@ -1730,6 +1733,24 @@ describe('desktop main startup', () => {
     const relabels = harness.trays[0]!.setContextMenu.mock.calls.length
     harness.ipcOn.mock.calls.find(call => call[0] === DESKTOP_IPC.localeChanged)![1]({ sender: window.webContents, senderFrame: window.webContents.mainFrame }, 'zh')
     expect(harness.trays[0]!.setContextMenu.mock.calls.length).toBe(relabels + 1)
+  })
+
+  it('shows the Linux tray icon as the way back from a hidden window', async () => {
+    vi.stubGlobal('process', { ...process, platform: 'linux', arch: 'x64', resourcesPath: 'desktop-test-resources' })
+    const host = await readyWorkspace()
+    const window = harness.windows[0]!
+    expect(harness.trays).toHaveLength(1)
+    expect(harness.trays[0]!.image).toEqual({ path: join('desktop-test-resources', 'tray-linux.png') })
+    window.show.mockClear()
+    window.close()
+    expect(window.isDestroyed()).toBe(false)
+    expect(window.hide).toHaveBeenCalledOnce()
+    // Linux hides without the Windows first-close confirmation; the tray icon is the way back.
+    expect(harness.backgroundNotice.close).not.toHaveBeenCalled()
+    expect(host.stop).not.toHaveBeenCalled()
+    harness.trays[0]!.emit('click')
+    expect(window.show).toHaveBeenCalledOnce()
+    expect(window.focus).toHaveBeenCalled()
   })
 
   it('hides a macOS owner with a mandatory view without quitting or stopping the Host', async () => {
