@@ -355,12 +355,14 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     } else if (selectionText.length > 0) {
       items.push({ role: 'copy', enabled: editFlags.canCopy })
     }
-    // Empty accelerators suppress Electron's default shortcut labels for native roles.
+    // Electron localizes native role labels from the Chromium locale, which is the operating
+    // system's language rather than the one chosen for DSH. Empty accelerators suppress
+    // Electron's default shortcut labels for those roles.
     if (items.length > 0) {
       const messages = currentDesktopLocale().messages
       Menu.buildFromTemplate(items.map(item => ({
         ...item,
-        ...(process.platform === 'win32' && item.role !== undefined && item.role in messages
+        ...(item.role !== undefined && item.role in messages
           ? { label: messages[item.role as keyof typeof messages] } : {}),
         accelerator: '',
       }))).popup({ window })

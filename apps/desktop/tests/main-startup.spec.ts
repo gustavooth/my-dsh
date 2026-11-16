@@ -1576,8 +1576,9 @@ describe('desktop main startup', () => {
     expect(harness.windows[0]!.urls).toEqual(['dsh-app://app/'])
   })
 
-  it('retains macOS native editing actions on right-click and only copy for selected read-only text', async () => {
-    vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin')
+  it.each(['darwin', 'linux'] as const)('labels the %s editing menu in the DSH language and only offers copy for selected read-only text', async (platform) => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
+    vi.spyOn(harness.app, 'getPreferredSystemLanguages').mockReturnValue(['pt-BR'])
     await import('../src/main.ts')
     await harness.preparing.promise
     const window = harness.windows[0]!
@@ -1586,16 +1587,19 @@ describe('desktop main startup', () => {
 
     window.webContents.emit('context-menu', {}, { isEditable: true, selectionText: 'text', editFlags })
     expect(harness.menu).toHaveBeenLastCalledWith([
-      { role: 'undo', enabled: true, accelerator: '' }, { role: 'redo', enabled: false, accelerator: '' },
+      { role: 'undo', enabled: true, label: 'Desfazer', accelerator: '' },
+      { role: 'redo', enabled: false, label: 'Refazer', accelerator: '' },
       { type: 'separator', accelerator: '' },
-      { role: 'cut', enabled: true, accelerator: '' }, { role: 'copy', enabled: true, accelerator: '' },
-      { role: 'paste', enabled: true, accelerator: '' }, { type: 'separator', accelerator: '' },
-      { role: 'selectAll', enabled: true, accelerator: '' },
+      { role: 'cut', enabled: true, label: 'Cortar', accelerator: '' },
+      { role: 'copy', enabled: true, label: 'Copiar', accelerator: '' },
+      { role: 'paste', enabled: true, label: 'Colar', accelerator: '' },
+      { type: 'separator', accelerator: '' },
+      { role: 'selectAll', enabled: true, label: 'Selecionar tudo', accelerator: '' },
     ])
     expect(harness.popup).toHaveBeenCalledWith({ window })
 
     window.webContents.emit('context-menu', {}, { isEditable: false, selectionText: 'text', editFlags })
-    expect(harness.menu).toHaveBeenLastCalledWith([{ role: 'copy', enabled: true, accelerator: '' }])
+    expect(harness.menu).toHaveBeenLastCalledWith([{ role: 'copy', enabled: true, label: 'Copiar', accelerator: '' }])
 
     harness.menu.mockClear()
     window.webContents.emit('context-menu', {}, { isEditable: false, selectionText: '', editFlags })
