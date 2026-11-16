@@ -212,6 +212,7 @@ const harness = await vi.hoisted(async () => {
   }()
   const trays: FakeTray[] = []
   class FakeTray extends EventEmitter {
+    readonly setImage = vi.fn()
     readonly setToolTip = vi.fn()
     readonly setContextMenu = vi.fn()
     readonly destroy = vi.fn()
@@ -340,6 +341,13 @@ vi.mock('../src/background-notice.ts', () => ({ DesktopBackgroundNotice: class {
   readonly close = harness.backgroundNotice.close
   readonly dispose = harness.backgroundNotice.dispose
 } }))
+vi.mock('../src/status-notifier.ts', () => ({
+  readStatusNotifierHostState: vi.fn(async () => 'registered' as const),
+  waitForStatusNotifierHost: vi.fn(({ onReady }: { onReady: () => void }) => {
+    onReady()
+    return () => {}
+  }),
+}))
 vi.mock('node:fs/promises', async (importOriginal) => {
   const original = await importOriginal<typeof import('node:fs/promises')>()
   return { ...original, readFile: vi.fn((path: Parameters<typeof original.readFile>[0], encoding?: 'utf8') => {

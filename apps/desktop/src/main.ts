@@ -67,6 +67,7 @@ import { installDesktopShortcuts } from './keyboard.ts'
 import { DesktopUpdateOverlays } from './update-overlay.ts'
 import { DesktopQuitConfirmation } from './quit-confirmation.ts'
 import { DesktopTray } from './tray.ts'
+import { readStatusNotifierHostState, waitForStatusNotifierHost } from './status-notifier.ts'
 import { DesktopBackgroundNotice } from './background-notice.ts'
 
 let focusPrimaryWindow = (): void => {}
@@ -380,6 +381,10 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
 }
 
 async function main(): Promise<void> {
+  // GUI launches can inherit no session-bus address; the session manager's own bus is the convention.
+  if (process.platform === 'linux' && !process.env.DBUS_SESSION_BUS_ADDRESS && process.env.XDG_RUNTIME_DIR !== undefined) {
+    process.env.DBUS_SESSION_BUS_ADDRESS = `unix:path=${process.env.XDG_RUNTIME_DIR}/bus`
+  }
   const desktopSettings = await readDesktopSettings(app.getPath('userData'))
   void pruneCrashReports(app.getPath('logs'))
   const journalDirectory = process.env.DSH_DESKTOP_UPDATE_JOURNAL_DIR
@@ -446,6 +451,7 @@ async function main(): Promise<void> {
   let mandatoryUI: DesktopMandatoryUpdateWindow | undefined
   let policyAuth: DesktopPolicyTestAuth | undefined
   let tray: DesktopTray | undefined
+  let stopWaitingForTray: (() => void) | undefined
   /**
    * The operating system is ending the session: the quit skips its confirmation. Windows sets it
    * on the definitive session-end message. macOS sets it on the power-off notification, which
@@ -1224,13 +1230,24 @@ async function main(): Promise<void> {
   const trayIconPath = development
     ? join(app.getAppPath(), 'resources', process.platform === 'win32' ? 'tray-windows.ico' : 'tray-linux.png')
     : join(process.resourcesPath, process.platform === 'win32' ? 'tray.ico' : 'tray-linux.png')
-  // The tray is the way back to a hidden window on Windows and Linux; macOS keeps the Dock.
-  // A Linux desktop without a StatusNotifier host still runs, so an unavailable tray only removes that entry.
-  if (process.platform === 'win32' || process.platform === 'linux') {
+  const createTray = (): void => {
+    if (tray !== undefined || quitting) return
     try {
       tray = new DesktopTray({ iconPath: trayIconPath, locale: currentDesktopLocale,
         open: () => { focusPrimaryWindow() }, quit: () => { app.quit() } })
     } catch (error) { console.warn('desktop tray: unavailable', error) }
+  }
+  // The tray is the way back to a hidden window on Windows and Linux; macOS keeps the Dock.
+  if (process.platform === 'win32') {
+    createTray()
+  } else if (process.platform === 'linux') {
+    // A session restored before its panel starts must not create the tray through the invisible
+    // GtkStatusIcon fallback; wait for a StatusNotifier host, then keep Electron's SNI path.
+    stopWaitingForTray = waitForStatusNotifierHost({
+      probe: readStatusNotifierHostState,
+      onReady: createTray,
+      isCancelled: () => quitting,
+    })
   }
   const backgroundNotice = process.platform === 'win32'
     ? new DesktopBackgroundNotice({ markerPath: join(app.getPath('userData'), 'background-close-confirmed'),
@@ -1414,6 +1431,7 @@ async function main(): Promise<void> {
     updateJournal?.action('quit-requested')
     quitConfirmation.dispose()
     backgroundNotice?.dispose()
+    stopWaitingForTray?.()
     tray?.dispose()
     stopAccount?.()
     if (mainWindow !== undefined && !mainWindow.isDestroyed()) mainWindow.hide()
@@ -1436,6 +1454,7 @@ async function main(): Promise<void> {
       quitConfirmation.dispose()
       backgroundNotice?.dispose()
       updateJournal?.action('quit-requested')
+      stopWaitingForTray?.()
       tray?.dispose()
       updateDialog.dispose()
       mandatoryUI?.dispose()

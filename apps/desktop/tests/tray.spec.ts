@@ -7,6 +7,7 @@ const native = await vi.hoisted(async () => {
   const { EventEmitter } = await import('node:events')
   const trays: FakeTray[] = []
   class FakeTray extends EventEmitter {
+    readonly setImage = vi.fn()
     readonly setToolTip = vi.fn()
     readonly setContextMenu = vi.fn()
     readonly destroy = vi.fn()
@@ -25,7 +26,7 @@ vi.mock('electron', () => ({
   Menu: { buildFromTemplate: native.buildFromTemplate },
 }))
 
-afterEach(() => { native.trays.length = 0; native.menus.length = 0; vi.clearAllMocks() })
+afterEach(() => { native.trays.length = 0; native.menus.length = 0; vi.useRealTimers(); vi.clearAllMocks() })
 
 function setup(locale = 'en') {
   let current = resolveDesktopLocale(locale)
@@ -57,6 +58,25 @@ it('opens the window on a single click and routes menu entries to the open and q
   ;(menu[2] as { click: () => void }).click()
   expect(f.open).toHaveBeenCalledTimes(2)
   expect(f.quit).toHaveBeenCalledOnce()
+})
+
+it('re-exports the icon after a status area can subscribe, and stops after disposal', () => {
+  vi.useFakeTimers()
+  const f = setup()
+  expect(f.native.setImage).not.toHaveBeenCalled()
+  vi.advanceTimersByTime(1500)
+  expect(f.native.setImage).toHaveBeenCalledWith(f.native.image)
+  f.tray.dispose()
+  vi.advanceTimersByTime(5000)
+  expect(f.native.setImage).toHaveBeenCalledOnce()
+})
+
+it('cancels the pending icon refresh when disposed before it fires', () => {
+  vi.useFakeTimers()
+  const f = setup()
+  f.tray.dispose()
+  vi.advanceTimersByTime(5000)
+  expect(f.native.setImage).not.toHaveBeenCalled()
 })
 
 it('relabels the menu in the current locale and ignores relabel after disposal', () => {
