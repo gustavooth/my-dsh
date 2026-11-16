@@ -5,6 +5,10 @@ import type { AccountClientMetadata, AccountView } from '@deepseek-ai/dsh-deepse
 export interface AccountUiState {
   readonly view: AccountView | undefined
   readonly failed: boolean
+  /** Model credential onboarding owns the login dialog and delays account notifications while mounted. */
+  readonly onboarding?: boolean
+  /** Desktop introduction covers the workspace during loading, saving, and exit animation. */
+  readonly desktopOnboardingVisible?: boolean
 }
 
 /** Read the account stream already owned by the account settings plugin. */
@@ -20,14 +24,6 @@ export interface AccountUi {
   clientMetadata(locale: string): AccountClientMetadata
 }
 
-/** Account-menu presentation facts supplied to its notification extension. */
-export interface AccountNotificationsOwnerProps {
-  /** Whether the account menu can display notifications outside onboarding. */
-  active: boolean
-  /** Open the account section in the existing settings shell. */
-  openAccount: () => void
-}
-
 declare module '@deepseek-ai/cordis' {
   interface Context { accountUi: AccountUi }
   interface Events {
@@ -38,12 +34,5 @@ declare module '@deepseek-ai/cordis' {
     'account-ui/change'(state: AccountUiState, reset: boolean): void
     /** Explicit account refresh from Settings or a returned Platform page. @mode parallel */
     'account-ui/refresh'(): Promise<void>
-  }
-}
-
-declare module '@deepseek-ai/dsh-client-ui-slots' {
-  interface SlotMap {
-    /** Notifications anchored at the account menu; the contribution owns its markup and lifecycle. */
-    'settings.launcher.notifications': { kind: 'single'; scope: 'root'; owner: AccountNotificationsOwnerProps }
   }
 }

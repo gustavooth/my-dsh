@@ -16,7 +16,7 @@ it('persists a Desktop channel from Settings and keeps external edits startup-on
     try {
       const settings = new DesktopUpdateSettings(join(scaffold.harnessHome, 'shell'), 'nightly')
       await settings.save('nightly')
-      let state: DesktopChannelState = { channel: 'nightly', packagedChannel: 'nightly', changing: false }
+      let state: DesktopChannelState = { channel: 'nightly', packagedChannel: 'nightly', feed: 'generic', changing: false }
       const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, locale: 'en-US' })
       const tripwire = watchConsole(page)
       let detailOpens = 0

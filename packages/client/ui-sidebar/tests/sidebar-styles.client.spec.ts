@@ -187,11 +187,17 @@ describe('SidebarRoot.module.css', () => {
 
   it('keeps full-size brand artwork with a compact mark-to-name gap', () => {
     expect(declarations('.brandIdentity')?.get('gap')).toBe('5px')
-    expect(declarations('.brandIdentity')?.get('height')).toBe('24px')
-    expect(declarations('.brandName')?.get('height')).toBe('24px')
+    expect(declarations('.brandIdentity')?.get('align-items')).toBe('flex-start')
+    expect(declarations('.brandName')?.get('min-height')).toBe('24px')
     expect(declarations('.brandName')?.get('line-height')).toBe('24px')
     expect(declarations('.brandName')?.get('font-size')).toBe('18px')
     expect(declarations('.fallbackBrandName')?.get('font-size')).toBe('17px')
     expect(declarations('.fallbackBrandName')?.get('white-space')).toBe('nowrap')
+  })
+
+  it('stacks the local build badge line beneath the brand name', () => {
+    expect(declarations('.localBuildBrand')?.get('flex-direction')).toBe('column')
+    expect(declarations('.localBuildBrand')?.get('gap')).toBe('3px')
+    expect(declarations('.localBuildBrand')?.get('height')).toBeUndefined()
   })
 })

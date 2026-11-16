@@ -7,7 +7,7 @@
     platformOrigin: "{{origin}}"
     harnessOrigin: "{{origin}}"
     allowLoopbackHttp: true
-# This scenario exercises the account launcher after initial setup.
+# This scenario exercises the notifications above the Settings trigger after initial setup.
 - id: ui-settings-account
   config:
     step: done

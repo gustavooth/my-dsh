@@ -47,7 +47,8 @@ describe('desktop release metadata', () => {
 const coordinators: InstanceType<typeof DesktopUpdateCoordinator>[] = []
 afterEach(() => { for (const item of coordinators.splice(0)) item.dispose() })
 
-function fixture(channel: 'nightly' | 'stable' = 'nightly', version = '1.1.0-alpha.1', discard?: (updater: AppUpdater) => Promise<void>) {
+function fixture(channel: 'nightly' | 'stable' = 'nightly', version = '1.1.0-alpha.1',
+  discard?: (updater: AppUpdater) => Promise<void>, feed: 'github' | 'generic' = 'generic') {
   const events = new EventEmitter()
   const checkForUpdates = vi.fn(async () => ({
     isUpdateAvailable: true,
@@ -63,10 +64,10 @@ function fixture(channel: 'nightly' | 'stable' = 'nightly', version = '1.1.0-alp
   const beforeRestart = vi.fn(async () => true)
   const downloadResult = vi.fn()
   const states: DesktopUpdateState[] = []
-  const updater = Object.assign(events, { checkForUpdates, downloadUpdate, quitAndInstall }) as unknown as AppUpdater
+  const updater = Object.assign(events, { channel: null, checkForUpdates, downloadUpdate, quitAndInstall }) as unknown as AppUpdater
   const coordinator = new DesktopUpdateCoordinator(
     (state) => { states.push(state); return state },
-    beforeRestart, updater, () => true, () => version, downloadResult, channel, discard,
+    beforeRestart, updater, () => true, () => version, downloadResult, channel, feed, discard,
   )
   coordinators.push(coordinator)
   return { coordinator, updater, events, states, checkForUpdates, downloadUpdate, quitAndInstall, beforeRestart, downloadResult }
@@ -254,6 +255,17 @@ it.each(['nightly', 'stable'] as const)('accepts newer prereleases on the select
     expect(await f.coordinator.check()).toMatchObject({ phase: 'available', version })
     expect(f.updater.channel).toBe(channel)
   }
+})
+
+it.each(['nightly', 'stable'] as const)('follows the repository Latest release for GitHub feeds on %s', async (channel) => {
+  const f = fixture(channel, '1.0.0', undefined, 'github')
+  expect(f.updater.channel).toBeNull()
+  expect(f.updater.allowPrerelease).toBe(false)
+  expect(f.updater.allowDowngrade).toBe(false)
+  f.checkForUpdates.mockResolvedValueOnce({ isUpdateAvailable: true, updateInfo: { version: '1.1.0' } })
+  expect(await f.coordinator.check()).toMatchObject({ phase: 'available', version: '1.1.0' })
+  expect(f.updater.channel).toBeNull()
+  expect(f.updater.allowPrerelease).toBe(false)
 })
 
 it.each(['nightly', 'stable'] as const)('rejects older, equal and malformed versions on %s', async (channel) => {

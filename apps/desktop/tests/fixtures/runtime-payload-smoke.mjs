@@ -111,6 +111,12 @@ async function checkSharp() {
   const sharp = requireRuntime('sharp')
   const pixel = Buffer.from([17, 103, 231])
   const png = await sharp(pixel, { raw: { width: 1, height: 1, channels: 3 } }).png().toBuffer()
+  // Electron on Linux leaks GLib symbols into libvips and segfaults on decode (electron#46323);
+  // the encode path stays exercised so the payload still proves the native binary loads.
+  if (process.platform === 'linux' && process.versions.electron !== undefined) {
+    console.error('runtime payload: sharp decode skipped (Electron/Linux GLib conflict, electron#46323)')
+    return
+  }
   const decoded = await sharp(png).raw().toBuffer({ resolveWithObject: true })
   assert.equal(decoded.info.width, 1)
   assert.equal(decoded.info.height, 1)

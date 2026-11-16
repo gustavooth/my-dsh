@@ -89,6 +89,23 @@ describe('installer preparation preserves application dependencies', () => {
     }
   })
 
+  it('installs the whale mark alone as the scalable Linux launcher icon', async () => {
+    const { fileURLToPath } = await import('node:url')
+    const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
+    const config = createElectronBuilderConfig({
+      DSH_DESKTOP_APP_ID: 'com.example.installer',
+      DSH_DESKTOP_TARGET_PLATFORM: 'linux',
+      DSH_DESKTOP_TARGET_ARCH: 'x64',
+      DSH_DESKTOP_UNSIGNED: '1',
+    }, 'linux', 'x64')
+    expect(config.linux.icon).toBe(fileURLToPath(new URL('../resources/icon-linux.svg', import.meta.url)))
+    const svg = readFileSync(config.linux.icon, 'utf8')
+    expect(svg).toContain('viewBox="0 0 50 50"')
+    expect(svg).toContain('fill="#4D6BFE"')
+    // A launcher icon carries the whale alone, without the wordmark or a background tile.
+    expect(svg).not.toContain('<rect')
+  })
+
   it('names unsigned Windows artifacts so they cannot pass for release builds', async () => {
     const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
     const config = createElectronBuilderConfig({

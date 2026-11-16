@@ -130,7 +130,7 @@ describe('GeneralSection', () => {
     const renderSlot = vi.fn(
       ((key: string) => <div data-testid={`slot-${key}`} />) as GeneralSectionComponentProps['renderSlot'],
     )
-    const props: GeneralSectionComponentProps = { ...kit, renderSlot, close: vi.fn() }
+    const props: GeneralSectionComponentProps = { ...kit, renderSlot, close: vi.fn(), openOnboarding: vi.fn() }
     const view = render(<GeneralSection {...props} />)
     return { view, renderSlot }
   }
@@ -334,7 +334,7 @@ it('shows channel load errors and waits for an explicit selection to settle', as
   state = { failed: true }
   view.rerender(<DesktopChannelRow {...props} useChannel={bindSnapshotSelector(createSnapshotStore(state))} />)
   expect(screen.getByRole('alert').textContent).toBe(en['desktop.channel.readError'])
-  state = { failed: false, state: { channel: null, packagedChannel: 'nightly', changing: false, error: 'format' } }
+  state = { failed: false, state: { channel: null, packagedChannel: 'nightly', feed: 'generic', changing: false, error: 'format' } }
   view.rerender(<DesktopChannelRow {...props} useChannel={bindSnapshotSelector(createSnapshotStore(state))} />)
   expect(control.textContent).toContain('Configuration unavailable')
   fireEvent.click(control)
@@ -345,7 +345,7 @@ it('shows channel load errors and waits for an explicit selection to settle', as
   expect(control.textContent).toBe('Stable')
   expect(control.getAttribute('aria-busy')).toBe('true')
   pending.resolve(undefined)
-  state = { failed: false, state: { channel: 'stable', packagedChannel: 'nightly', changing: false } }
+  state = { failed: false, state: { channel: 'stable', packagedChannel: 'nightly', feed: 'generic', changing: false } }
   view.rerender(<DesktopChannelRow {...props} useChannel={bindSnapshotSelector(createSnapshotStore(state))} />)
   expect(control.textContent).toBe('Stable')
   fireEvent.click(control)
@@ -354,7 +354,7 @@ it('shows channel load errors and waits for an explicit selection to settle', as
   fireEvent.click(control)
   fireEvent.click(screen.getByRole('menuitem', { name: 'Development' }))
   await waitFor(() => { expect(select).toHaveBeenLastCalledWith('nightly') })
-  state = { failed: false, state: { channel: 'nightly', packagedChannel: 'nightly', changing: true } }
+  state = { failed: false, state: { channel: 'nightly', packagedChannel: 'nightly', feed: 'generic', changing: true } }
   view.rerender(<DesktopChannelRow {...props} useChannel={bindSnapshotSelector(createSnapshotStore(state))} />)
   expect(control.hasAttribute('disabled')).toBe(true)
   state = { ...state, state: { ...state.state!, changing: false } }
@@ -362,8 +362,15 @@ it('shows channel load errors and waits for an explicit selection to settle', as
   await waitFor(() => { expect(control.textContent).toBe('Development') })
 })
 
+it('hides the channel selector for a GitHub release feed', () => {
+  const state: DesktopChannelState = { channel: 'nightly', packagedChannel: 'nightly', feed: 'github', changing: false }
+  const props = { ...kit, t, select: vi.fn(), useChannel: bindSnapshotSelector(createSnapshotStore({ failed: false, state })) }
+  render(<DesktopChannelRow {...props} />)
+  expect(screen.queryByRole('button', { name: 'Update channel' })).toBeNull()
+})
+
 it('keeps the failure toast after Settings unmounts and rolls back the remounted selector', async () => {
-  const state: DesktopChannelState = { channel: 'nightly', packagedChannel: 'nightly', changing: false }
+  const state: DesktopChannelState = { channel: 'nightly', packagedChannel: 'nightly', feed: 'generic', changing: false }
   const reply = Promise.withResolvers<DesktopChannelChangeResult>()
   const source = new DesktopChannelSource({ get: async () => state, set: () => reply.promise, subscribe: () => () => {} })
   const useChannel = bindSnapshotSelector(source.store)

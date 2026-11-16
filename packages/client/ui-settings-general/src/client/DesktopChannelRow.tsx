@@ -21,6 +21,8 @@ export function DesktopChannelRow({ useChannel, select, t }:
   PropsRuntime<'settings.general.item'> & PropsLocale<'settings'> & InjectFace<DesktopChannelRowInjected>) {
   const { state, failed, pending } = useChannel(value => value)
   const [open, setOpen] = useState(false)
+  // GitHub releases expose one Latest release, so a nightly/stable choice would change nothing.
+  if (state?.feed === 'github') return null
   const busy = pending !== undefined || state?.changing === true
   const channel = pending ?? state?.channel
   return <div className={css.row} role="group" aria-label={t('desktop.channel.title')}>

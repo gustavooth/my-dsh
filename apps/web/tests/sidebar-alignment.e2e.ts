@@ -5,9 +5,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Browser, Locator, Page } from 'playwright'
 import { chromium } from 'playwright'
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, onTestFailed, vi } from 'vitest'
-import type { AccountView } from '@deepseek-ai/dsh-deepseek-account/types'
-import type {} from '@deepseek-ai/dsh-deepseek-account'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, onTestFailed } from 'vitest'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import {
   compareOrRefreshGolden, launchWebScaffold, seedSession, watchConsole,
@@ -301,7 +299,10 @@ describe('web e2e: sidebar search alignment and row action targets', () => {
       else await input.press('Escape')
     }
     await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click()
-    await expect.poll(() => page.getByRole('button', { name: 'Account menu', exact: true }).getAttribute('data-collapsed')).toBe('true')
+    await expect.poll(async () => {
+      const rect = await page.getByRole('button', { name: 'Settings', exact: true }).boundingBox()
+      return rect === null ? null : { width: rect.width, height: rect.height }
+    }).toEqual({ width: 36, height: 36 })
     const add = page.getByRole('button', { name: 'Add workspace', exact: true })
     const samples = await add.evaluate(async (button, entry) => {
       const header = button.closest<HTMLElement>('[class*="sectionHeader"]')
@@ -504,72 +505,52 @@ describe('web e2e: sidebar search alignment and row action targets', () => {
     expect(tripwire.pageErrors).toEqual([])
   })
 
-  it.each([false, true])('keeps account footer geometry in wide and rail layouts (signed in: %s)', async (signedIn) => {
-    onTestFailed(() => saveFailureShot(page, `web-e2e-sidebar-account-${String(signedIn)}`))
-    const account = scaffold.ctx.deepseekAccount
-    const state: AccountView = {
-      status: 'credential-stored', attempt: null,
-      links: { usageUrl: 'https://platform.deepseek.com/usage', topUpUrl: 'https://platform.deepseek.com/top_up' },
-    }
-    // Only Platform identity is synthetic; the account provider's RPC and client renderer remain composed.
-    const mocks = signedIn ? [
-      vi.spyOn(account, 'getState').mockResolvedValue(state),
-      vi.spyOn(account, 'getProfile').mockResolvedValue({
-        status: 'ready', value: { id: null, name: 'Sidebar account', contact: null, avatarUrl: null },
-      }),
-      vi.spyOn(account, 'getBalance').mockResolvedValue({ status: 'ready', value: [], bonusWallets: [] }),
-      vi.spyOn(account, 'watch').mockImplementation(async function* (signal) {
-        yield { type: 'snapshot', state }
-        if (signal.aborted) return
-        await new Promise<void>((resolve) => { signal.addEventListener('abort', () => { resolve() }, { once: true }) })
-      }),
-    ] : []
-    try {
-      if (signedIn) await page.reload({ waitUntil: 'load' })
-      const accountButton = page.getByRole('button', { name: 'Account menu', exact: true })
-      await expect.poll(() => accountButton.getAttribute('data-signed-out')).toBe(String(!signedIn))
-      const measure = () => accountButton.evaluate((element) => {
-        const button = element.getBoundingClientRect()
-        const style = getComputedStyle(element)
-        const newSession = document.querySelector('button[class*="newSession"]')
-        if (newSession === null) throw new Error('New session reference is missing')
-        const reference = newSession.getBoundingClientRect()
-        const footer = element.closest('[class*="footArea"]')?.getBoundingClientRect()
-        if (footer === undefined) throw new Error('Account footer is missing')
-        return {
-          height: button.height, width: button.width,
-          footerCenterOffset: (button.left + button.right - footer.left - footer.right) / 2,
-          leftOffset: button.left - reference.left, rightOffset: button.right - reference.right,
-          paintedLeftOffset: button.left + Number.parseFloat(style.borderLeftWidth) - reference.left,
-          paintedRightOffset: button.right - Number.parseFloat(style.borderRightWidth) - reference.right,
-        }
-      })
-      const wide = await measure()
-      expect(wide.height).toBe(signedIn ? 44 : 32)
-      expect(wide.leftOffset).toBe(signedIn ? -2 : -4)
-      expect(wide.rightOffset).toBe(signedIn ? 2 : 4)
-      expect(wide.paintedLeftOffset).toBe(signedIn ? -2 : -1)
-      expect(wide.paintedRightOffset).toBe(signedIn ? 2 : 1)
-      await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click()
-      await expect.poll(() => accountButton.getAttribute('data-collapsed')).toBe('true')
-      await expect.poll(async () => {
-        const rect = await accountButton.boundingBox()
-        return rect === null ? null : { width: rect.width, height: rect.height }
-      }).toEqual({ width: 36, height: 36 })
-      await page.locator('button[class*="newSession"]').evaluate(async (element) => {
-        await Promise.all(element.getAnimations().map(animation => animation.finished))
-      })
-      const rail = await measure()
-      expect(rail.footerCenterOffset).toBe(0)
-      await compareOrRefreshGolden(
-        fileURLToPath(new URL(`./expected/sidebar-alignment/account-${signedIn ? 'signed-in' : 'signed-out'}.expected.md`, import.meta.url)),
-        JSON.stringify({ wide, rail }, null, 2), MODE,
-      )
-      expect(tripwire.pageErrors).toEqual([])
-    } finally {
-      await page.close()
-      mocks.forEach((mock) => { mock.mockRestore() })
-    }
+  it('keeps the Settings footer trigger geometry in wide and rail layouts', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-sidebar-settings-trigger'))
+    const trigger = page.getByRole('button', { name: 'Settings', exact: true })
+    await trigger.waitFor()
+    const measure = () => trigger.evaluate((element) => {
+      const button = element.getBoundingClientRect()
+      const style = getComputedStyle(element)
+      const newSession = document.querySelector('button[class*="newSession"]')
+      if (newSession === null) throw new Error('New session reference is missing')
+      const reference = newSession.getBoundingClientRect()
+      const footer = element.closest('[class*="footArea"]')?.getBoundingClientRect()
+      if (footer === undefined) throw new Error('Settings footer is missing')
+      const area = element.closest('[class*="settingsArea"]')?.getBoundingClientRect()
+      if (area === undefined) throw new Error('Settings area is missing')
+      return {
+        height: button.height, width: button.width, areaWidth: area.width,
+        footerCenterOffset: (button.left + button.right - footer.left - footer.right) / 2,
+        paintedLeftOffset: button.left + Number.parseFloat(style.borderLeftWidth) - reference.left,
+        paintedRightOffset: button.right - Number.parseFloat(style.borderRightWidth) - reference.right,
+        borderInline: Number.parseFloat(style.borderLeftWidth),
+      }
+    })
+    const wide = await measure()
+    // The wide trigger fills the footer row at the shared 42px control height.
+    expect(wide.height).toBe(42)
+    expect(wide.width).toBeCloseTo(wide.areaWidth, 0)
+    expect(wide.footerCenterOffset).toBe(0)
+    // Its 3px inline paint inset lines the painted row up with the New Session row above.
+    expect(wide.borderInline).toBe(3)
+    expect(wide.paintedLeftOffset).toBe(-1)
+    expect(wide.paintedRightOffset).toBe(1)
+    await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click()
+    await expect.poll(async () => {
+      const rect = await trigger.boundingBox()
+      return rect === null ? null : { width: rect.width, height: rect.height }
+    }).toEqual({ width: 36, height: 36 })
+    await page.locator('button[class*="newSession"]').evaluate(async (element) => {
+      await Promise.all(element.getAnimations().map(animation => animation.finished))
+    })
+    const rail = await measure()
+    // The rail swaps the row for the same 36x36 box and drops the paint inset.
+    expect(rail.width).toBe(36)
+    expect(rail.height).toBe(36)
+    expect(rail.footerCenterOffset).toBe(0)
+    expect(rail.borderInline).toBe(0)
+    expect(tripwire.pageErrors).toEqual([])
   })
 
   it.each(['session', 'workspace'] as const)('keeps %s action glyphs in 16px layout space with 24px buttons', async (kind) => {

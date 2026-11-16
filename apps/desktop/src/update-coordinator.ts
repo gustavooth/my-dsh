@@ -8,7 +8,7 @@ import { gt, valid } from 'semver'
 import type { DesktopUpdateState } from './ipc.ts'
 import { DesktopUpdateHttpExecutor } from './updates/electron-updater/http-executor.ts'
 import { DesktopUpdatePreparationError, downloadFailureDetails } from './update-error.ts'
-import type { DesktopUpdateChannel } from './update-channel.ts'
+import type { DesktopUpdateChannel, DesktopUpdateFeed } from './update-channel.ts'
 import { selectUpdateChannel } from './updates/electron-updater/channel.ts'
 import { discardDesktopUpdate } from './updates/electron-updater/discard.ts'
 
@@ -65,6 +65,7 @@ export class DesktopUpdateCoordinator {
     private readonly currentVersion: () => string = () => app.getVersion(),
     private readonly downloadResult?: (success: boolean, reason?: string) => void,
     private channel: DesktopUpdateChannel = 'nightly',
+    private readonly feed: DesktopUpdateFeed = 'generic',
     private readonly discard: (updater: AppUpdater) => Promise<void> = discardDesktopUpdate,
   ) {
     if (updater === autoUpdater) {
@@ -78,7 +79,7 @@ export class DesktopUpdateCoordinator {
     }
     this.updater.autoDownload = false
     this.updater.autoInstallOnAppQuit = false
-    selectUpdateChannel(this.updater, channel)
+    selectUpdateChannel(this.updater, this.feed, channel)
     this.updater.on('download-progress', this.onProgress)
     this.updater.on('update-downloaded', this.onDownloaded)
     this.updater.on('error', this.onError)
@@ -136,7 +137,7 @@ export class DesktopUpdateCoordinator {
         throw error
       }
       this.channel = channel
-      selectUpdateChannel(this.updater, channel)
+      selectUpdateChannel(this.updater, this.feed, channel)
       this.configurationError = undefined
       this.setState({ phase: 'checking' })
       const result = await this.doCheck()

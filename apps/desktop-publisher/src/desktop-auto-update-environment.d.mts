@@ -5,7 +5,7 @@ export const DESKTOP_AUTO_UPDATE_ENV: 'DSH_DESKTOP_AUTO_UPDATE_ENV'
 export type DesktopAutoUpdateEnvironment = 'test' | 'production'
 
 /** Directory name of one supported Desktop release target. */
-export type DesktopAutoUpdateTarget = 'mac-arm64' | 'mac-x64' | 'win-x64'
+export type DesktopAutoUpdateTarget = 'mac-arm64' | 'mac-x64' | 'win-x64' | 'linux-x64'
 
 /**
  * Name the fixed installer object shared by uploading and cache refresh.
@@ -75,7 +75,7 @@ export function desktopBuildRecordFilename(target: DesktopAutoUpdateTarget): str
 export function desktopUpdateMetadataFilename(
   version: string,
   platform: NodeJS.Platform,
-  channel?: 'nightly' | 'stable',
+  channel?: 'nightly' | 'stable' | 'latest',
 ): string
 
 /**
@@ -120,3 +120,39 @@ export function resolveDesktopUpdateChannel(env: NodeJS.ProcessEnv): 'nightly' |
  * @returns Trimmed setting value.
  */
 export function requiredEnvironmentValue(env: NodeJS.ProcessEnv, name: string): string
+
+/** Environment variable that selects where Desktop releases are published and checked. */
+export const DESKTOP_UPDATE_FEED_ENV: 'DSH_DESKTOP_UPDATE_FEED'
+
+/** Environment variable that names the GitHub repository receiving Desktop releases. */
+export const DESKTOP_UPDATE_GITHUB_REPOSITORY_ENV: 'DSH_DESKTOP_UPDATE_GITHUB_REPOSITORY'
+
+/** GitHub repository that carries Desktop releases when a build names none. */
+export const DEFAULT_DESKTOP_UPDATE_GITHUB_REPOSITORY: string
+
+/**
+ * Read the GitHub repository that receives Desktop releases.
+ * @param env Packaging or upload environment.
+ * @returns Validated GitHub repository.
+ */
+export function resolveDesktopUpdateGithubRepository(
+  env: NodeJS.ProcessEnv,
+): { readonly owner: string; readonly repo: string }
+
+/** Update destination sealed into one build. */
+export type DesktopUpdateSource =
+  | { readonly provider: 'github'; readonly channel: 'nightly' | 'stable'; readonly owner: string; readonly repo: string }
+  | { readonly provider: 'generic'; readonly environment: DesktopAutoUpdateEnvironment; readonly channel: 'nightly' | 'stable'; readonly publicUrl: string }
+
+/**
+ * Resolve the update destination embedded into one build.
+ * @param env Packaging environment.
+ * @param platform Target Node.js platform.
+ * @param arch Target Node.js architecture.
+ * @returns Feed embedded into the application.
+ */
+export function resolveDesktopUpdateSource(
+  env: NodeJS.ProcessEnv,
+  platform: NodeJS.Platform,
+  arch: string,
+): DesktopUpdateSource

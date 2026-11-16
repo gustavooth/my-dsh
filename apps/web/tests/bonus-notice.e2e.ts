@@ -423,11 +423,11 @@ describe.skipIf(MODE === 'record')('web e2e: bonus notice', () => {
     expect(platform.acks).toHaveLength(2)
 
     // Closing settings repeats no acknowledgement and leaves the card on the sidebar.
-    const launcher = page.getByRole('button', { name: '账号菜单', exact: true })
+    const settingsTrigger = page.getByRole('button', { name: '设置', exact: true })
     await page.keyboard.press('Escape')
     await settings.waitFor({ state: 'detached', timeout: 30_000 })
-    // The shell restores focus to the launcher once the close commits.
-    await expect.poll(() => launcher.evaluate(element => element === document.activeElement), { timeout: 30_000 }).toBe(true)
+    // The shell restores focus to the Settings trigger once the close commits.
+    await expect.poll(() => settingsTrigger.evaluate(element => element === document.activeElement), { timeout: 30_000 }).toBe(true)
     observations.push(`open.closed settings cards=${String(await noticeCards(page).count())} acks=${String(platform.acks.length)}`)
     expect(await noticeCards(page).count()).toBe(1)
     expect(platform.acks).toHaveLength(2)
@@ -437,7 +437,7 @@ describe.skipIf(MODE === 'record')('web e2e: bonus notice', () => {
     expect(platform.acks).toHaveLength(2)
     observations.push(`open.dismissed cards=0 acks=${String(platform.acks.length)}`)
 
-    // The next entry refreshes once more; switching sections inside one open is not an entry.
+    // The next entry refreshes once more; only a section remount reads the account.
     const reopenGetsBefore = platform.gets.length
     const reopenSummariesBefore = platform.summaries.length
     await openSettings(page, 'zh')
@@ -448,25 +448,31 @@ describe.skipIf(MODE === 'record')('web e2e: bonus notice', () => {
     observations.push(`reopen.open gets=${String(platform.gets.length - reopenGetsBefore)} summaries=${String(platform.summaries.length - reopenSummariesBefore)} cards=${String(await noticeCards(page).count())} acks=${String(platform.acks.length)}`)
     expect(await noticeCards(page).count()).toBe(0)
     expect(platform.acks).toHaveLength(2)
-    // Arm the hold so a read triggered by navigation would be recorded and observed rather
-    // than racing this assertion.
+    // Leaving Account performs no read; returning mounts the section again, so it
+    // refreshes exactly as a fresh Settings entry does. Hold that read so the
+    // in-flight observation cannot race a fast loopback reply.
     const sectionGetsBefore = platform.gets.length
     const sectionSummariesBefore = platform.summaries.length
     platform.holdNextGet()
     const nav = reopened.locator('nav')
     await nav.getByRole('button', { name: '模型', exact: true }).click()
     await expect.poll(async () => nav.getByRole('button', { name: '模型', exact: true }).getAttribute('aria-current'), { timeout: 30_000 }).toBe('true')
-    await nav.getByRole('button', { name: '账号与余额', exact: true }).click()
-    await expect.poll(async () => nav.getByRole('button', { name: '账号与余额', exact: true }).getAttribute('aria-current'), { timeout: 30_000 }).toBe('true')
-    platform.releaseGet()
-    const sectionPanel = (await reopened.textContent()) ?? ''
-    observations.push(`reopen.section-switch gets=${String(platform.gets.length - sectionGetsBefore)} summaries=${String(platform.summaries.length - sectionSummariesBefore)} amount=${String(sectionPanel.includes('¥13.00'))} cards=${String(await noticeCards(page).count())} acks=${String(platform.acks.length)}`)
     expect(platform.gets.length).toBe(sectionGetsBefore)
     expect(platform.summaries.length).toBe(sectionSummariesBefore)
+    await nav.getByRole('button', { name: '账号与余额', exact: true }).click()
+    await expect.poll(async () => nav.getByRole('button', { name: '账号与余额', exact: true }).getAttribute('aria-current'), { timeout: 30_000 }).toBe('true')
+    await expect.poll(() => platform.gets.length, { timeout: 30_000 }).toBe(sectionGetsBefore + 1)
+    await expect.poll(() => platform.summaries.length, { timeout: 30_000 }).toBe(sectionSummariesBefore + 1)
+    platform.releaseGet()
+    await expect.poll(async () => (await reopened.textContent()) ?? '', { timeout: 30_000 }).toContain('¥13.00')
+    const sectionPanel = (await reopened.textContent()) ?? ''
+    observations.push(`reopen.section-switch gets=${String(platform.gets.length - sectionGetsBefore)} summaries=${String(platform.summaries.length - sectionSummariesBefore)} amount=${String(sectionPanel.includes('¥13.00'))} cards=${String(await noticeCards(page).count())} acks=${String(platform.acks.length)}`)
+    expect(platform.gets.length).toBe(sectionGetsBefore + 1)
+    expect(platform.summaries.length).toBe(sectionSummariesBefore + 1)
     expect(sectionPanel).toContain('¥13.00')
     await page.keyboard.press('Escape')
     await reopened.waitFor({ state: 'detached', timeout: 30_000 })
-    await expect.poll(() => launcher.evaluate(element => element === document.activeElement), { timeout: 30_000 }).toBe(true)
+    await expect.poll(() => settingsTrigger.evaluate(element => element === document.activeElement), { timeout: 30_000 }).toBe(true)
     observations.push(`reopen.closed cards=${String(await noticeCards(page).count())} acks=${String(platform.acks.length)}`)
     expect(await noticeCards(page).count()).toBe(0)
     expect(platform.acks).toHaveLength(2)

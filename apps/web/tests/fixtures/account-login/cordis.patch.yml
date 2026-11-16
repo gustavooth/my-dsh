@@ -6,7 +6,7 @@
     platformOrigin: "{{origin}}"
     harnessOrigin: "{{origin}}"
     allowLoopbackHttp: true
-# The scenario signs in from the account menu after initial setup.
+# The scenario signs in from Settings › Account after initial setup.
 - id: ui-settings-account
   config:
     step: done

@@ -1,4 +1,4 @@
-/** Notification extension rendered inside the sidebar account menu. */
+/** Notification extension rendered above the sidebar Settings trigger. */
 import { useEffect, useRef, type CSSProperties } from 'react'
 import { Button, IconCloseOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { HostObservable, InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
@@ -10,7 +10,11 @@ import { dismissNotice } from './notice-transition.ts'
 
 /** Notification view and interactions supplied by the notification plugin. */
 export interface AccountNotificationsInjected {
-  hooks: { notices: HostObservable<readonly AccountNotice[]> }
+  hooks: {
+    notices: HostObservable<readonly AccountNotice[]>
+    /** Whether the signed-in account can show notifications outside onboarding. */
+    active: HostObservable<boolean>
+  }
   /** @param id - notification that completed a displayed frame. */
   shown: (id: AccountNotice['id']) => void
   /** @param id - foreground notification whose non-dismiss action was clicked. */
@@ -20,14 +24,18 @@ export interface AccountNotificationsInjected {
 }
 
 /** Notification component props derived from its parent-owned slot. */
-export type AccountNotificationsProps = PropsRuntime<'settings.launcher.notifications'>
+export type AccountNotificationsProps = PropsRuntime<'settings.trigger.notifications'>
   & InjectFace<AccountNotificationsInjected> & PropsLocale<'account.notifications'>
 
-/** @param props - account-menu availability and notification content. @returns the anchored notification stack. */
-export function AccountNotifications({ active, openAccount, useNotices, shown, ctaClicked, dismiss, t }: AccountNotificationsProps) {
+/**
+ * @param props - settings navigation, account availability and notification content.
+ * @returns the anchored notification stack.
+ */
+export function AccountNotifications({ openSettings, useActive, useNotices, shown, ctaClicked, dismiss, t }: AccountNotificationsProps) {
+  const active = useActive(value => value)
   const notices = useNotices(value => value)
   return active && <AccountNoticeStack notices={notices} closeLabel={t('close')}
-    onOpenAccount={openAccount} onShown={shown} onCtaClicked={ctaClicked} onDismiss={dismiss} />
+    onOpenAccount={() => { openSettings('account') }} onShown={shown} onCtaClicked={ctaClicked} onDismiss={dismiss} />
 }
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {

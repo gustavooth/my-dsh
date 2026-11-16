@@ -2,6 +2,7 @@
   - text: 设置
   - navigation:
     - button "通用设置"
+    - button "账号与余额"
     - button "模型"
     - button "内置插件"
     - button "Agent 预设"

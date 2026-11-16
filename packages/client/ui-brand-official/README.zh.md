@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包在空白首页提供点击浮出的像素鲸鱼，并让以 `official` profile 构建的客户端显示 DeepSeek Harness 侧栏品牌图形。随产品提供的 Web 与 Desktop 组合默认加载本包。其他构建 profile 保留原有品牌。首屏标志仍使用动画鱼回退。背景只持有临时 Canvas 资源，不增加模型请求。
+本包在空白首页提供点击浮出的像素鲸鱼，并为所有客户端构建 profile 提供 DeepSeek Harness 侧栏品牌图形。随产品提供的 Web 与 Desktop 组合默认加载本包。首屏标志仍使用动画鱼回退。背景只持有临时 Canvas 资源，不增加模型请求。
 
 ## 目录
 
@@ -25,11 +25,11 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-随产品提供的 Web 与 Desktop 组合已挂载本插件。首页反馈不需要额外安装或启用；`official` 客户端构建还会注册 DeepSeek 侧栏图形。
+随产品提供的 Web 与 Desktop 组合已挂载本插件。首页反馈不需要额外安装或启用，每种构建 profile 都注册 DeepSeek 侧栏图形。
 
-### 选择 profile
+### 品牌与构建 profile
 
-`DSH_CLIENT_BUILD_PROFILE` 决定渲染哪个品牌。`official` 构建显示官方侧栏标志和名称；任何其他取值都让外壳回退——鱼形标志与本地构建标签——保持原样。会话首屏无论 profile 如何都显示来自 `dsh-client-ui-conversation` 的动画首屏鱼，因为这个回退本身就是官方标志。两种情况下插件都会照常加载并通过校验；只有侧栏图形注册受 profile 门控；各构建 profile 共用首页背景。
+每种构建 profile 都带官方侧栏标志和名称，profile 不参与选择侧栏图形。本地构建沿用同一品牌，并在其下方带上外壳的版本徽标；official 产物不带徽标。会话首屏在所有 profile 中都显示来自 `dsh-client-ui-conversation` 的动画首屏鱼，因为这个回退本身就是官方标志。插件在所有 profile 中都会照常加载并通过校验；各构建 profile 共用首页背景。
 
 ### 首页反馈
 

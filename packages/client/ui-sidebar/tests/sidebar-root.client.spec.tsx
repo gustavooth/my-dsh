@@ -282,6 +282,59 @@ describe('SidebarRoot shell', () => {
     expect(container.querySelector('svg')).not.toBeNull()
   })
 
+  it('stacks the local-build version badge beneath an occupied brand name', () => {
+    vi.stubEnv('DSH_CLIENT_VERSION', '1.2.3')
+    vi.stubEnv('DSH_CLIENT_COMMIT_HASH', 'abcdef0')
+    render(<SidebarRoot
+      drawer={false}
+      collapsed={false} width={300}
+      useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}
+      usePanelInfo={usePanelInfo} selectPanel={() => {}} usePanels={selector => selector([])} useEntryPins={selector => selector([])}
+      useEntryActions={selector => selector(false)} setPinned={vi.fn()}
+      useShortcuts={selector => selector([])}
+      useContextMenu={contextMenuHook()} useResource={useResource} useWorkspaces={neverHook}
+      {...allowAllAccess}
+      startSession={vi.fn()} toggleSidebar={vi.fn()} trackEntryClick={vi.fn()} t={t}
+      renderFactorySlot={() => null}
+      renderSlot={((key: string) => {
+        if (key === 'sidebar.brand.mark') return <span data-testid="brand-mark">M</span>
+        if (key === 'sidebar.brand.name') return <span data-testid="brand-name">Brand</span>
+        return null
+      }) as SidebarRootComponentProps['renderSlot']}
+    />)
+
+    // The occupant keeps its own artwork while the badge joins the same copy target.
+    const brand = screen.getByTestId('brand-name')
+    const version = screen.getByText('1.2.3-abcdef0')
+    expect(screen.queryByText('DSH Local Build')).toBeNull()
+    expect(brand.nextElementSibling).toBe(version)
+    expect(version.closest('[data-copy-version]')).toBe(brand.closest('[data-copy-version]'))
+  })
+
+  it('omits local-build metadata from official artifacts', () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'official')
+    vi.stubEnv('DSH_CLIENT_VERSION', '1.2.3')
+    vi.stubEnv('DSH_CLIENT_COMMIT_HASH', 'abcdef0')
+    render(<SidebarRoot
+      drawer={false}
+      collapsed={false} width={300}
+      useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}
+      usePanelInfo={usePanelInfo} selectPanel={() => {}} usePanels={selector => selector([])} useEntryPins={selector => selector([])}
+      useEntryActions={selector => selector(false)} setPinned={vi.fn()}
+      useShortcuts={selector => selector([])}
+      useContextMenu={contextMenuHook()} useResource={useResource} useWorkspaces={neverHook}
+      {...allowAllAccess}
+      startSession={vi.fn()} toggleSidebar={vi.fn()} trackEntryClick={vi.fn()} t={t}
+      renderFactorySlot={() => null}
+      renderSlot={((_key: string, _owner: unknown, options?: { fallback?: ReactNode }) =>
+        options?.fallback ?? null) as SidebarRootComponentProps['renderSlot']}
+    />)
+
+    expect(screen.queryByText('1.2.3-abcdef0')).toBeNull()
+    expect(document.querySelector('[data-copy-version]')).toBeNull()
+    expect(screen.getByText('DSH Local Build')).toBeTruthy()
+  })
+
   it.each([
     [{ DSH_CLIENT_VERSION: '1.2.3' }, '1.2.3'],
     [{ DSH_CLIENT_COMMIT_HASH: 'abcdef0', DSH_CLIENT_VERSION: '1.2.3' }, '1.2.3-abcdef0'],

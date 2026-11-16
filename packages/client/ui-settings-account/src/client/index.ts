@@ -19,7 +19,7 @@ import { authorizeUrlWithTheme } from './authorize-url.ts'
 import { BrowserLogin } from './browser-login.ts'
 import { AccountOnboarding } from './AccountOnboarding.tsx'
 import { AccountPlatformHost, type AccountPlatformHostInjected } from './AccountPlatformHost.tsx'
-import { AccountMenu } from './AccountMenu.tsx'
+import { AccountAlerts } from './AccountAlerts.tsx'
 import { createPlatformPages, type PlatformPages } from './platform-pages.ts'
 import { AccountSection, type AccountSnapshot, type AccountSectionInjected } from './AccountSection.tsx'
 import { accountClientMetadata } from './client-metadata.ts'
@@ -32,10 +32,9 @@ import { readOnboardingApiKeyPresence } from './onboarding-credentials.ts'
 import { refreshAfterReturn } from './account-refresh.ts'
 import { AccountAvatarLoader } from './account-avatar.ts'
 export type { AccountSectionInjected, AccountSectionProps } from './AccountSection.tsx'
-export type { AccountMenuProps } from './AccountMenu.tsx'
 export type { AccountSnapshot } from './AccountSection.tsx'
 export type { AccountKey } from './locales.ts'
-export type { AccountUi, AccountUiState, AccountNotificationsOwnerProps } from './account-ui.ts'
+export type { AccountUi, AccountUiState } from './account-ui.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap { 'settings.account': AccountKey }
@@ -311,22 +310,25 @@ export function apply(ctx: Context): void {
       }),
     }, AccountPlatformHost))
   }
-  ctx.remoteAccess.whenAccess('account/watch', () => ctx.slots.inject('settings.launcher', () => ctx.slots.register({
-    name: 'settings.launcher', locale: 'settings.account', inject: () => operations,
-    children: { 'settings.launcher.notifications': { kind: 'single', scope: 'root' } },
-  }, AccountMenu)))
+  // Account state reaches the user through the Settings section and its alerts,
+  // so both exist while access lasts and the sidebar keeps its plain Settings trigger.
+  ctx.remoteAccess.whenAccess('account/watch', () => ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay', id: 'account.alerts', locale: 'settings.account', inject: () => operations,
+  }, AccountAlerts)))
   ctx.remoteAccess.whenAccess('account/watch', () => ctx.slots.inject('settings.section', () => {
     let unregister: (() => void) | undefined
+    let order: number | undefined
+    // Signed-in users land on Account; otherwise the section waits after General
+    // so Settings keeps its General default.
     const update = () => {
-      if (snapshot.view?.status === 'credential-stored') {
-        unregister ??= ctx.slots.register({
-          name: 'settings.section', id: 'account', order: -10, label: () => t('nav'),
-          locale: 'settings.account', inject: () => operations,
-        }, AccountSection)
-      } else {
-        unregister?.()
-        unregister = undefined
-      }
+      const next = snapshot.view?.status === 'credential-stored' ? -10 : 5
+      if (next === order) return
+      unregister?.()
+      order = next
+      unregister = ctx.slots.register({
+        name: 'settings.section', id: 'account', order: next, label: () => t('nav'),
+        locale: 'settings.account', inject: () => operations,
+      }, AccountSection)
     }
     listeners.add(update)
     update()

@@ -45,8 +45,12 @@ const COLLAPSE_SETTLE_MS = 150
  */
 const SCROLLBAR_LINGER_MS = 2000
 
-/** Format complete-build metadata for the local brand badge. */
+/**
+ * Format complete-build metadata for the local brand badge.
+ * Official artifacts carry no local badge; every other build does.
+ */
 function localBuildVersion(): string | undefined {
+  if (process.env.DSH_CLIENT_BUILD_PROFILE === 'official') return undefined
   const version = process.env.DSH_CLIENT_VERSION
   if (version === undefined) return undefined
   const commit = process.env.DSH_CLIENT_COMMIT_HASH
@@ -266,8 +270,8 @@ export function SidebarRoot({
   }, [pointerInside])
 
   const buildVersion = localBuildVersion()
-  // The local-build fallbacks copy the badge text; the brand button below
-  // skips New Session for clicks inside them. The click still bubbles, so
+  // A local build's mark and brand name copy the badge text; the brand button
+  // below skips New Session for clicks inside them. The click still bubbles, so
   // document-level outside-click listeners see it.
   // Each successful copy bumps the key so a repeated copy replays the toast.
   const [copiedToast, setCopiedToast] = useState<number | null>(null)
@@ -333,8 +337,13 @@ export function SidebarRoot({
             macOS, where it stays part of the logo row's window-drag surface
             (the drag-row controls rule would subtract a button);
             the collapsed rail's logo is the expand toggle below instead.
-            Mouse clicks on the local-build fallbacks copy the version instead. */}
+            Mouse clicks on a local build's mark and brand name copy the version instead. */}
         {wide && (() => {
+          const brandName = renderSlot('sidebar.brand.name', {}, {
+            fallback: buildVersion === undefined
+              ? <span className={css.fallbackBrandName}>{t('brand.localBuild')}</span>
+              : <span className={css.localBuildTitle}>{t('brand.localBuild')}</span>,
+          })
           const identity = (
             <span className={css.brandIdentity} aria-hidden="true">
               <span className={css.brandMark}>
@@ -345,16 +354,14 @@ export function SidebarRoot({
                 })}
               </span>
               <span className={css.brandName}>
-                {renderSlot('sidebar.brand.name', {}, {
-                  fallback: buildVersion === undefined
-                    ? <span className={css.fallbackBrandName}>{t('brand.localBuild')}</span>
-                    : (
-                      <span className={clsx(css.localBuildBrand, css.copyVersion)} data-copy-version onClick={copyVersion(buildVersion)}>
-                        <span className={css.localBuildTitle}>{t('brand.localBuild')}</span>
-                        <span className={css.buildVersion}>{buildVersion}</span>
-                      </span>
-                    ),
-                })}
+                {buildVersion === undefined
+                  ? brandName
+                  : (
+                    <span className={clsx(css.localBuildBrand, css.copyVersion)} data-copy-version onClick={copyVersion(buildVersion)}>
+                      {brandName}
+                      <span className={css.buildVersion}>{buildVersion}</span>
+                    </span>
+                  )}
               </span>
             </span>
           )

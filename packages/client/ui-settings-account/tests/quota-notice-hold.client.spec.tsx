@@ -177,7 +177,7 @@ async function bench() {
   references.push(reference)
   descriptor.resolve(reference.binding)
   runtime.renderSlot('shell.overlay', {})
-  runtime.renderSlot('settings.section', { close: () => {} })
+  runtime.renderSlot('settings.section', { close: () => {}, openOnboarding: () => {} })
   return {
     runtime,
     pages,

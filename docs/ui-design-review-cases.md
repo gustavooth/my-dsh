@@ -136,9 +136,9 @@ Use these examples to understand a relationship that is unclear. Apply the same 
 
 The [alignment reference](../.agents/skills/dsh-client-ui-ux/references/alignment.md) owns shared axes, complete layout boxes, indentation and text metrics. Use the examples below to apply those decisions.
 
-![Alignment diagram: peer rows share axes while account and header controls retain their own geometry](assets/ui-design-review/principles-alignment.svg)
+![Alignment diagram: peer rows share axes while the sidebar footer and header controls retain their own geometry](assets/ui-design-review/principles-alignment.svg)
 
-The schematic distinguishes peer-row axes from account and header geometry; it is not a pixel specification. Compare content, painted backgrounds and hit targets separately; different roles need not share every axis.
+The schematic distinguishes peer-row axes from footer and header geometry; it is not a pixel specification. Compare content, painted backgrounds and hit targets separately; different roles need not share every axis.
 
 ### Text metrics and unequal content
 
@@ -157,11 +157,11 @@ The comparison below shows actual preset cards with unequal descriptions. On the
 <a id="case-sidebar-axes"></a>
 ### Example A1: Role-based sidebar alignment
 
-**Scene and relationship.** Compare navigation, workspace rows, conversations and the account area in the expanded sidebar. Include the centered New conversation action and the painted row edges, not only text starts.
+**Scene and relationship.** Compare navigation, workspace rows, conversations and the sidebar footer in the expanded sidebar. Include the centered New conversation action and the painted row edges, not only text starts.
 
-**Failure and correction.** Applying one leading-slot width to every role can move titles, enlarge spacing or distort the signed-in account row. Preserve the owning shared variables, compact icon slots and paint insets. Retain deliberate account geometry and hierarchy instead of manufacturing one text axis across all roles.
+**Failure and correction.** Applying one leading-slot width to every role can move titles, enlarge spacing or distort the sidebar footer row. Preserve the owning shared variables, compact icon slots and paint insets. Retain deliberate footer geometry and hierarchy instead of manufacturing one text axis across all roles.
 
-**Acceptance.** Use guides to compare same-role rows. Check short and long titles, optional icons, project expansion and signed-in/out account states. Revealing row actions must not move the title start. A list crop does not establish whole-sidebar alignment.
+**Acceptance.** Use guides to compare same-role rows. Check short and long titles, optional icons, project expansion and the Settings trigger in its expanded and rail states. Revealing row actions must not move the title start. A list crop does not establish whole-sidebar alignment.
 
 <a id="case-action-columns"></a>
 ### Example A2: Distinct header and row action groups
@@ -268,7 +268,7 @@ Image: IBM Carbon Design System. Follow the annotations between the introduction
 
 **Scene and relationship.** “New conversation” is the main action; plugins/automations/more are a global navigation group; the workspace heading introduces the project list. Equal row heights do not express these different relationships.
 
-**Correction and acceptance.** Keep the navigation rows together, separate that group from the workspace section, and bring the workspace heading closer to the projects it labels. The main action has its own separation. Review the full sidebar with the account area visible; compare the role-specific relationships from A1. A larger gap before every project would falsely turn each item into a separate section.
+**Correction and acceptance.** Keep the navigation rows together, separate that group from the workspace section, and bring the workspace heading closer to the projects it labels. The main action has its own separation. Review the full sidebar with its footer visible; compare the role-specific relationships from A1. A larger gap before every project would falsely turn each item into a separate section.
 
 ### Composed whitespace and responsive grouping
 

@@ -6,6 +6,8 @@ import {
   resolveDesktopAutoUpdateConfig,
   resolveDesktopAutoUpdateEnvironment,
   resolveDesktopAutoUpdateTarget,
+  resolveDesktopUpdateSource,
+  resolveDesktopUpdateGithubRepository,
   resolveDesktopUploadConfig,
 } from '@deepseek-ai/dsh-desktop-publisher/desktop-auto-update-environment.mjs'
 
@@ -25,7 +27,7 @@ describe('desktop auto-update environment', () => {
     expect(() => resolveDesktopAutoUpdateConfig(environment, 'darwin', 'arm64')).toThrow(/DOWNLOAD_TEST_RELEASE_ID/u)
   })
 
-  it.each([['darwin', 'arm64', 'mac-arm64'], ['darwin', 'x64', 'mac-x64'], ['win32', 'x64', 'win-x64']] as const)
+  it.each([['darwin', 'arm64', 'mac-arm64'], ['darwin', 'x64', 'mac-x64'], ['win32', 'x64', 'win-x64'], ['linux', 'x64', 'linux-x64']] as const)
   ('uses one test release directory for %s %s feeds and binaries', (platform, arch, target) => {
     expect(resolveDesktopAutoUpdateConfig({ DOWNLOAD_TEST_ORIGIN: 'https://updates.example.com',
       DOWNLOAD_TEST_RELEASE_ID: RELEASE_ID }, platform, arch)).toMatchObject({
@@ -108,8 +110,8 @@ describe('desktop auto-update environment', () => {
     expect(() => resolveDesktopAutoUpdateEnvironment({
       DSH_DESKTOP_AUTO_UPDATE_ENV: 'staging',
     })).toThrow(/test.*production/u)
-    expect(() => resolveDesktopAutoUpdateTarget('linux', 'x64')).toThrow(/unsupported target/u)
-    expect(() => desktopBuildRecordFilename('linux-x64' as 'mac-arm64')).toThrow(/unsupported target/u)
+    expect(() => resolveDesktopAutoUpdateTarget('linux', 'arm64')).toThrow(/unsupported target/u)
+    expect(() => desktopBuildRecordFilename('linux-arm64' as 'mac-arm64')).toThrow(/unsupported target/u)
   })
 
   it('uses Nightly metadata for stable and prerelease Desktop versions', () => {
@@ -125,6 +127,7 @@ it.each([
   ['mac-arm64', 'dsh-latest-macos-arm64.dmg'],
   ['mac-x64', 'dsh-latest-macos-x64.dmg'],
   ['win-x64', 'dsh-latest-windows-x64.exe'],
+  ['linux-x64', 'dsh-latest-linux-x64.deb'],
 ] as const)('uses the production origin for website target %s', (target, filename) => {
   expect(desktopWebsiteInstallerUrl(target)).toBe(`https://download.deepseek.com/desktop/${filename}`)
 })
@@ -137,4 +140,46 @@ it.each([['darwin', 'arm64', 'mac-arm64', 'stable-mac.yml'], ['darwin', 'x64', '
   expect(config.binaryKeyPrefix).toBe(`dsh-desk/bin/${target}/stable`)
   expect(desktopUpdateMetadataFilename('1.0.0', platform, config.channel)).toBe(filename)
   expect(() => resolveDesktopAutoUpdateConfig({ DSH_DESKTOP_UPDATE_CHANNEL: 'latest' }, platform, arch)).toThrow(/channel/u)
+})
+
+describe('desktop update source', () => {
+  it('defaults builds to the fork GitHub releases without COS credentials', () => {
+    expect(resolveDesktopUpdateSource({}, 'darwin', 'arm64')).toEqual({
+      provider: 'github', channel: 'nightly', owner: 'gustavooth', repo: 'my-dsh',
+    })
+    expect(resolveDesktopUpdateSource({ DSH_DESKTOP_UPDATE_CHANNEL: 'stable' }, 'win32', 'x64')).toMatchObject({ channel: 'stable' })
+    expect(resolveDesktopUpdateSource({ DSH_DESKTOP_UPDATE_FEED: 'github' }, 'win32', 'x64')).toMatchObject({ provider: 'github' })
+  })
+
+  it.each([
+    'gustavooth/my-dsh',
+    'https://github.com/gustavooth/my-dsh',
+    'https://github.com/gustavooth/my-dsh.git',
+    'https://github.com/gustavooth/my-dsh/',
+  ])('reads %j as a GitHub repository', (repository) => {
+    expect(resolveDesktopUpdateGithubRepository({ DSH_DESKTOP_UPDATE_GITHUB_REPOSITORY: repository }))
+      .toEqual({ owner: 'gustavooth', repo: 'my-dsh' })
+  })
+
+  it.each(['gustavooth', 'gustavooth/', '/deepseek-harness', 'a/b/c',
+    'https://gitlab.com/gustavooth/my-dsh', 'https://github.com/gustavooth/my-dsh?tab=readme',
+    'ftp://github.com/gustavooth/my-dsh', 'https://user:secret@github.com/gustavooth/my-dsh',
+    'owner with space/repo', 'gustavooth/repo name'])('rejects invalid GitHub repository %j', (repository) => {
+    expect(() => resolveDesktopUpdateGithubRepository({ DSH_DESKTOP_UPDATE_GITHUB_REPOSITORY: repository }))
+      .toThrow(/GitHub repository/u)
+  })
+
+  it('keeps the fixed-URL feed available to release automation', () => {
+    expect(resolveDesktopUpdateSource({
+      DSH_DESKTOP_UPDATE_FEED: 'generic', DOWNLOAD_TEST_ORIGIN: 'https://updates.example.com',
+      DOWNLOAD_TEST_RELEASE_ID: RELEASE_ID,
+    }, 'darwin', 'arm64')).toEqual({
+      provider: 'generic', environment: 'test', channel: 'nightly',
+      publicUrl: `https://updates.example.com/dsh-desk/${RELEASE_ID}/feeds/mac-arm64/`,
+    })
+    expect(() => resolveDesktopUpdateSource({ DSH_DESKTOP_UPDATE_FEED: 'generic' }, 'darwin', 'arm64'))
+      .toThrow(/DOWNLOAD_TEST_ORIGIN/u)
+    expect(() => resolveDesktopUpdateSource({ DSH_DESKTOP_UPDATE_FEED: 'bucket' }, 'darwin', 'arm64'))
+      .toThrow(/must be "github" or "generic"/u)
+  })
 })

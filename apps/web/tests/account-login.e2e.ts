@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { chromium, type Browser } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed, onTestFinished } from 'vitest'
 import { compareOrRefreshGolden, launchWebScaffold, watchConsole, webSnapshotMode, type WebScaffold } from './scaffold.ts'
-import { saveFailureShot } from './support.ts'
+import { openSettings, saveFailureShot } from './support.ts'
 
 const OVERLAY_TEMPLATE = fileURLToPath(new URL('./fixtures/account-login/cordis.patch.yml', import.meta.url))
 const MODE = webSnapshotMode()
@@ -26,6 +26,9 @@ async function mockPlatform() {
   let redirectUri: string | undefined
   let avatarRequests = 0
   let notificationLists = 0
+  /** Hold the picture reply so the signed-in section's mount refresh cannot race the first load. */
+  let holdAvatars = false
+  const pendingAvatars: (() => void)[] = []
   const server: Server = createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://127.0.0.1')
     const reply = (payload: unknown): void => {
@@ -68,10 +71,14 @@ async function mockPlatform() {
       return
     }
     if (url.pathname === '/avatar.svg') {
-      avatarRequests++
-      if (avatarRequests < 3) { res.writeHead(503, { 'cache-control': 'no-store' }).end(); return }
-      res.writeHead(200, { 'content-type': 'image/svg+xml', 'cache-control': 'max-age=3600' })
-        .end('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="16" fill="blue"/></svg>')
+      const ordinal = ++avatarRequests
+      const answer = (): void => {
+        if (ordinal < 3) { res.writeHead(503, { 'cache-control': 'no-store' }).end(); return }
+        res.writeHead(200, { 'content-type': 'image/svg+xml', 'cache-control': 'max-age=3600' })
+          .end('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="16" fill="blue"/></svg>')
+      }
+      if (holdAvatars) { pendingAvatars.push(answer); return }
+      answer()
       return
     }
     if (req.headers['x-dsh-auth-token'] !== TOKEN) { res.writeHead(401).end(); return }
@@ -96,6 +103,8 @@ async function mockPlatform() {
   const origin = `http://localhost:${String(address.port)}`
   return {
     origin, inits, pages, avatarRequests: () => avatarRequests, notificationLists: () => notificationLists,
+    holdAvatar: () => { holdAvatars = true },
+    releaseAvatar: () => { holdAvatars = false; for (const answer of pendingAvatars.splice(0)) answer() },
     close: () => new Promise<void>((resolve) => { server.close(() => { resolve() }); server.closeAllConnections() }),
   }
 }
@@ -122,23 +131,31 @@ describe.skipIf(MODE === 'record')('web e2e: DeepSeek account sign-in in a plain
     if (root !== undefined) await rm(root, { recursive: true, force: true })
   })
 
-  it('signs in through a themed tab and recovers both avatars on a later Settings entry', async () => {
+  it('signs in through a themed tab and recovers the Account avatar on a later Settings entry', async () => {
     const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, locale: 'en-US', colorScheme: 'dark' })
     onTestFinished(() => context.close())
     const page = await context.newPage()
     const console = watchConsole(page)
     onTestFailed(() => saveFailureShot(page, 'web-e2e-account-login'))
     await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
-    const menu = page.getByRole('button', { name: 'Account menu', exact: true })
-    await menu.click()
+    const settings = page.getByRole('dialog', { name: 'Settings', exact: true })
+    const account = settings.getByRole('region', { name: 'Account', exact: true })
+    // Signed out, Settings opens on General; the Account section has its own nav row.
+    await openSettings(page, 'en')
+    await settings.waitFor()
+    await settings.getByRole('button', { name: 'Account', exact: true }).click()
+    // Hold the picture reply: the sign-in re-registers the Account section (signed-in
+    // order), so its remount refresh must not race the first picture load.
+    platform.holdAvatar()
     const tab = context.waitForEvent('page')
     const callback = context.waitForEvent('request', request => new URL(request.url()).pathname === '/oauth/callback')
-    await page.getByRole('menuitem', { name: 'Sign in', exact: true }).click()
+    await account.getByRole('button', { name: 'Sign in', exact: true }).click()
     const authorization = await tab
     expect((await (await callback).allHeaders())['sec-fetch-site']).toBe('cross-site')
     await authorization.waitForURL(url => url.pathname === '/dsh/authorized', { timeout: 30_000 })
     expect(await authorization.evaluate(() => window.opener === null)).toBe(true)
-    await expect.poll(() => menu.textContent(), { timeout: 30_000 }).toBe('Web User')
+    // The credential closes the login dialog and swaps the section to its signed-in card.
+    await account.getByRole('button', { name: 'Sign out', exact: true }).waitFor({ timeout: 30_000 })
 
     const pageOrigin = new URL(scaffold.authenticatedUrl).origin
     expect(platform.inits).toHaveLength(1)
@@ -146,68 +163,59 @@ describe.skipIf(MODE === 'record')('web e2e: DeepSeek account sign-in in a plain
     const [authorize, authorized] = platform.pages.map(href => new URL(href))
     expect(authorize?.searchParams.get('theme')).toBe('dark')
     expect(authorized?.searchParams.get('login_source')).toBe('web')
-    await expect.poll(platform.avatarRequests).toBe(1)
-    await menu.locator('[data-avatar-status="failed"]').waitFor()
-    expect(await menu.locator('img').count()).toBe(0)
+    // The signed-in frame reads the profile once; the remounted section's own mount
+    // refresh adds one notification read. Release the held picture reply as a failure.
+    await expect.poll(platform.notificationLists, { timeout: 30_000 }).toBe(2)
+    await expect.poll(platform.avatarRequests, { timeout: 30_000 }).toBe(1)
+    platform.releaseAvatar()
+    await account.locator('[data-avatar-status="failed"]').waitFor()
+    expect(await account.locator('img').count()).toBe(0)
     const states: string[] = []
-    let expectedLists = 1
+    let expectedLists = 2
     const capture = async (stage: string): Promise<void> => {
       await expect.poll(platform.notificationLists).toBe(expectedLists)
-      const sidebar = menu.locator('[data-avatar-status]')
-      const account = page.getByRole('region', { name: 'Account', exact: true })
       const mounted = await account.count() > 0
       const settingsStatus = mounted
         ? await account.locator('[data-avatar-status]').getAttribute('data-avatar-status') : 'unmounted'
-      states.push(`${stage}: sidebar=${await sidebar.getAttribute('data-avatar-status')}, settings=${settingsStatus}, `
-        + `sidebarImages=${await menu.locator('img').count()}, settingsImages=${mounted ? await account.locator('img').count() : 0}, `
+      states.push(`${stage}: settings=${settingsStatus}, settingsImages=${mounted ? await account.locator('img').count() : 0}, `
         + `requests=${platform.avatarRequests()}, notificationLists=${platform.notificationLists()}`)
     }
     await capture('Initial load')
-    await menu.click()
+    await settings.getByRole('button', { name: 'Close', exact: true }).click()
+    await settings.waitFor({ state: 'detached' })
+    // Every Settings entry mounts the Account section, whose mount refresh retries the picture.
+    await openSettings(page, 'en')
     expectedLists++
-    await page.getByRole('menuitem', { name: 'Settings', exact: true }).click()
-    const settings = page.getByRole('dialog', { name: 'Settings', exact: true })
-    const account = settings.getByRole('region', { name: 'Account', exact: true })
     await expect.poll(platform.avatarRequests).toBe(2)
     await account.locator('[data-avatar-status="failed"]').waitFor()
-    expect(await menu.locator('img').count()).toBe(0)
     expect(await account.locator('img').count()).toBe(0)
     await capture('First Settings entry')
     await settings.getByRole('button', { name: 'Close', exact: true }).click()
     await settings.waitFor({ state: 'detached' })
-    await menu.click()
+    await openSettings(page, 'en')
     expectedLists++
-    await page.getByRole('menuitem', { name: 'Settings', exact: true }).click()
-    await expect.poll(() => menu.locator('img').count()).toBe(1)
     await expect.poll(() => account.locator('img').count()).toBe(1)
-    for (const image of [menu.locator('img'), account.locator('img')]) {
-      await expect.poll(() => image.evaluate(element =>
-        element instanceof HTMLImageElement && element.complete && element.naturalWidth > 0)).toBe(true)
-      expect(await image.getAttribute('src')).toBe(`${platform.origin}/avatar.svg`)
-    }
+    const image = account.locator('img')
+    await expect.poll(() => image.evaluate(element =>
+      element instanceof HTMLImageElement && element.complete && element.naturalWidth > 0)).toBe(true)
+    expect(await image.getAttribute('src')).toBe(`${platform.origin}/avatar.svg`)
     await capture('Second Settings entry')
     await settings.getByRole('button', { name: 'Close', exact: true }).click()
     await settings.waitFor({ state: 'detached' })
-    await menu.click()
+    await openSettings(page, 'en')
     expectedLists++
-    await page.getByRole('menuitem', { name: 'Settings', exact: true }).click()
     await account.waitFor()
-    expect(await menu.locator('img').count()).toBe(1)
     expect(await account.locator('img').count()).toBe(1)
     expect(platform.avatarRequests()).toBe(3)
     await capture('Third Settings entry')
-    await menu.locator('img').dispatchEvent('error')
-    await menu.locator('[data-avatar-status="failed"]').waitFor()
+    await account.locator('img').dispatchEvent('error')
     await account.locator('[data-avatar-status="failed"]').waitFor()
-    expect(await menu.locator('img').count()).toBe(0)
     expect(await account.locator('img').count()).toBe(0)
     await capture('Rendered image failure')
     await settings.getByRole('button', { name: 'Close', exact: true }).click()
     await settings.waitFor({ state: 'detached' })
-    await menu.click()
+    await openSettings(page, 'en')
     expectedLists++
-    await page.getByRole('menuitem', { name: 'Settings', exact: true }).click()
-    await expect.poll(() => menu.locator('img').count()).toBe(1)
     await expect.poll(() => account.locator('img').count()).toBe(1)
     await capture('Settings entry after rendered failure')
     await compareOrRefreshGolden(AVATAR_EXPECTED, states.join('\n'), MODE)

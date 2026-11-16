@@ -47,6 +47,7 @@ type PanelProps = {
   activeId: string | undefined
   onSelect: (id: string) => void
   onClose: () => void
+  openOnboarding: (id: string) => void
 }
 
 /**
@@ -54,7 +55,7 @@ type PanelProps = {
  * header button, a mask click, and document-level Escape (mounted only while
  * open, so the listener lifetime is the panel's).
  */
-function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: PanelProps) {
+function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose, openOnboarding }: PanelProps) {
   // Entries can unmount underneath the requested id, so the render-time
   // projection falls back to the first row when the id is gone.
   const active = rows.find(r => r.id === activeId)?.id ?? rows[0]?.id
@@ -106,7 +107,7 @@ function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: PanelP
           </button>
         </div>
         <div className={css.options}>
-          {active !== undefined && renderSlot('settings.section', { close: onClose }, { only: active })}
+          {active !== undefined && renderSlot('settings.section', { close: onClose, openOnboarding }, { only: active })}
         </div>
       </div>
     </div>
@@ -220,17 +221,21 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
     connectionIndicator = 'recovered'
   }
 
+  const openOnboarding = (id: string): void => { close(); setRequestedOnboarding(id) }
+  const openSettings = (sectionId?: string): void => {
+    if (sectionId === undefined) actions.open()
+    else actions.openSection(sectionId)
+  }
+
   return (
     <>
       <div className={clsx(css.triggerRow, !wide && css.railRow)}>
-        {renderSlot('settings.launcher', {
-          wide, settingsOpen: open, openSettings: (sectionId) => {
-            if (sectionId === undefined) actions.open()
-            else actions.openSection(sectionId)
-          },
-          ...(shortcut?.keys.length ? { settingsShortcut: { keys: shortcut.keys, aria: shortcut.aria } } : {}),
-          openOnboarding: (id) => { close(); setRequestedOnboarding(id) },
-        }, { fallback: <Tooltip disabled={open} label={t('trigger')} shortcutKeys={shortcut?.keys}>
+        {/* Absolute anchoring keeps the stack clear of the trigger row; the
+            rail hides it without unmounting its registrant. */}
+        <div className={css.notifications} hidden={!wide}>
+          {renderSlot('settings.trigger.notifications', { openSettings })}
+        </div>
+        <Tooltip disabled={open} label={t('trigger')} shortcutKeys={shortcut?.keys}>
           <button
             type="button"
             className={clsx(css.trigger, !wide && css.rail)}
@@ -242,7 +247,7 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
           >
             {renderSlot('settings.trigger', { wide })}
           </button>
-        </Tooltip> })}
+        </Tooltip>
         <ConnectionIndicator
           state={wide && desktopUpdate.presentation?.phase !== 'installing' ? connectionIndicator : undefined}
           disconnectedLabel={t('connection.error')}
@@ -262,6 +267,7 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
           activeId={activeId}
           onSelect={actions.select}
           onClose={close}
+          openOnboarding={openOnboarding}
         />
       )}
       {/* Dialog chrome and `#root` inert ownership live inside each step's

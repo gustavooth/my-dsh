@@ -67,8 +67,6 @@ import * as TerminalPanel from '@deepseek-ai/dsh-terminal-panel'
 import * as ToolGoal from '@deepseek-ai/dsh-tool-goal'
 import * as ToolSchedule from '@deepseek-ai/dsh-tool-schedule'
 import ScheduleService from '@deepseek-ai/dsh-schedule'
-import Lsp from '@deepseek-ai/dsh-lsp'
-import * as ToolLsp from '@deepseek-ai/dsh-tool-lsp'
 import * as ToolSkill from '@deepseek-ai/dsh-tool-skill'
 import * as ToolSessionQuery from '@deepseek-ai/dsh-tool-session-query'
 import * as ToolJobs from '@deepseek-ai/dsh-tool-jobs'
@@ -525,20 +523,6 @@ const TOOL_PACKAGES: ToolPackage[] = [
       + 'Management reads and writes Host tasks by id across Sessions. '
       + 'Tasks store an RFC 5545 recurrence and an existing, first-created-and-reused, or per-run-new Session target. '
       + 'Delegated subagents cannot call these tools.',
-  },
-  {
-    pkg: '@deepseek-ai/dsh-tool-lsp',
-    dir: 'tool-lsp',
-    source: 'packages/lsp/tool-lsp/src/index.ts',
-    requires: ['ctx.workingDirectory', 'ctx.tools', 'ctx.lsp', 'ctx.systemPrompt'],
-    writes: ['tool/call', 'tool/result'],
-    async mount(ctx) {
-      // The tool registers from the seam alone; the schema does not depend on any provider.
-      await ctx.plugin(Lsp)
-      await ctx.plugin(ToolLsp)
-    },
-    note:
-      'The lsp tool keeps provider selection and language-server subprocesses behind ctx.lsp, so its model-visible schema stays stable across providers. Requires a registered provider (e.g. `@deepseek-ai/dsh-lsp-stdio`) at runtime; without one, a query returns the structured `LSP_UNAVAILABLE` error rather than changing the schema.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-ralph',

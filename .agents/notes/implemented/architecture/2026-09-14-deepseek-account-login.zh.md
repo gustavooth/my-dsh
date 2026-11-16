@@ -28,7 +28,7 @@ Platform 客户端身份属于发起调用的界面，而不属于 Host。每个
 
 ## 影响
 
-退出登录先删除本地授权，再使用捕获的 token 调用 Platform POST /auth-api/v0/users/logout。远程失败不会恢复登录态。首次请求失败后，提供者最多重试五次，使用可配置的指数退避，默认从一秒开始。重试任务只保留旧 token，不改变后续登录态，并在提供者关闭时结束，不持久化。本地凭证删除成功后才发布已退出状态。退出登录位于侧边栏账号菜单；账号设置负责资料、余额和登录。两者通过框架 hook 读取插件持有的同一条 Host 状态流。
+退出登录先删除本地授权，再使用捕获的 token 调用 Platform POST /auth-api/v0/users/logout。远程失败不会恢复登录态。首次请求失败后，提供者最多重试五次，使用可配置的指数退避，默认从一秒开始。重试任务只保留旧 token，不改变后续登录态，并在提供者关闭时结束，不持久化。本地凭证删除成功后才发布已退出状态。退出登录位于账号设置分区；该分区负责资料、余额、登录和退出，并通过框架 hook 读取插件持有的同一条 Host 状态流。
 
 API Key 与账号记录独立保存。账号 token 没有主动刷新流程；退登重试耗尽后，已从本地删除的 token 在远端仍可能有效。提供者初始化时在本地丢弃与配置的 Platform 来源不同的授权，不调用远端撤销，使环境切换以未登录态启动，而不导致 Desktop 启动失败。API Key 和设备标识保留。资料与余额接口的 HTTP 401 响应清除被拒绝的凭据，其他查询错误保留登录态；授权尝试的有效期仅适用于 token 签发前。同一授权 token 可认证已配置签发来源上的 Platform current 和 get_user_summary 查询。Host 原样保留 Platform 脱敏后的联系方式并丢弃响应 token；账号变化使未完成结果失效。UI 分行显示 normal_wallets 充值余额与正额 bonus_wallets 赠金余额，避免将赠金额度显示为充值资金。
 
@@ -46,7 +46,7 @@ DSH 授权通过 x-dsh-auth-token 请求头鉴权 Platform、推理和 Files 请
 
 开发环境认证通过配置的平台来源上的显式 Host 请求头 requestHeaders 完成。提供者拒绝重定向和保留请求头覆盖，防止开发环境 Cookie 替换账号授权或跟随浏览器跳转地址。特定环境的认证协议不属于账号提供者。
 
-内置账号界面在 Desktop 和普通 Web 中都挂载账号入口、设置和登录引导。Host 在 auth_init 中发送 login_source（desktop 或 web），以便 Platform 选择完成页体验；存在 Desktop preload 桥接时界面发送 desktop，否则发送 web。Web 登录失败时关闭授权标签页，原标签页通过 Host 状态获知结果；不使用 Web UI 返回 URL。后端接受 localhost 回调。DSH 保留浏览器提供的 localhost 主机名和端口，不做 DNS 解析或 IP 字面量转换。
+内置账号界面在 Desktop 和普通 Web 中都挂载账号设置分区、账号提醒和登录引导。Host 在 auth_init 中发送 login_source（desktop 或 web），以便 Platform 选择完成页体验；存在 Desktop preload 桥接时界面发送 desktop，否则发送 web。Web 登录失败时关闭授权标签页，原标签页通过 Host 状态获知结果；不使用 Web UI 返回 URL。后端接受 localhost 回调。DSH 保留浏览器提供的 localhost 主机名和端口，不做 DNS 解析或 IP 字面量转换。
 
 macOS 开发启动器为 `dsh://open` 注册独立、经临时签名的应用包。该应用包保留工作区入口和开发路径，使 Launch Services 能够冷启动；凭证不会被复制，也不修改包管理器安装的 Electron 应用。协议注册指向最近启动的开发版或打包版应用。
 

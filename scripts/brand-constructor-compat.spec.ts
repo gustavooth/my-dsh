@@ -31,7 +31,6 @@ import {
   ReasoningEffortId,
   ToolCallId,
 } from '../packages/llm/llm/src/brand.ts'
-import { LspProviderId } from '../packages/lsp/lsp/src/brand.ts'
 import { ScheduleId } from '../packages/schedule/schedule/src/domain.ts'
 import { SessionSearchCursor } from '../packages/session-query/session-query/src/cursor.ts'
 import { SessionPersistenceRevision } from '../packages/session/session-persistence/src/revision.ts'
@@ -77,7 +76,6 @@ describe('External compatibility API: retained string constructors', () => {
     ['llm.ProviderRequestId', ProviderRequestId],
     ['llm.ReasoningEffortId', ReasoningEffortId],
     ['llm.ToolCallId', ToolCallId],
-    ['lsp.LspProviderId', LspProviderId],
     ['schedule.ScheduleId', ScheduleId],
     ['session-query.SessionSearchCursor', SessionSearchCursor],
     ['session-persistence.SessionPersistenceRevision', SessionPersistenceRevision],

@@ -92,29 +92,29 @@ it('withdraws every account surface and the account stream on revocation, and re
     },
   }
   const surfaces = (): Record<string, number | undefined> => Object.fromEntries(
-    ['settings.launcher', 'shell.quota-notice', 'settings.models.sign-in', 'settings.section'].map(name => [name, registered.get(name)]),
+    ['shell.overlay', 'shell.quota-notice', 'settings.models.sign-in', 'settings.section'].map(name => [name, registered.get(name)]),
   )
   try {
     apply(ctx as never)
     expect(new Set(guards.map(guard => guard.action))).toEqual(new Set(['account/watch']))
     grant(guards)
     await streams[0]!.accepted
-    expect(surfaces()).toEqual({ 'settings.launcher': 1, 'shell.quota-notice': 1, 'settings.models.sign-in': 1, 'settings.section': 1 })
+    expect(surfaces()).toEqual({ 'shell.overlay': 1, 'shell.quota-notice': 1, 'settings.models.sign-in': 1, 'settings.section': 1 })
 
     revoke(guards)
     expect(streams[0]!.signal.aborted).toBe(true)
-    expect(surfaces()).toEqual({ 'settings.launcher': 0, 'shell.quota-notice': 0, 'settings.models.sign-in': 0, 'settings.section': 0 })
+    expect(surfaces()).toEqual({ 'shell.overlay': 0, 'shell.quota-notice': 0, 'settings.models.sign-in': 0, 'settings.section': 0 })
 
     grant(guards)
     await streams[1]!.accepted
-    expect(surfaces()).toEqual({ 'settings.launcher': 1, 'shell.quota-notice': 1, 'settings.models.sign-in': 1, 'settings.section': 1 })
+    expect(surfaces()).toEqual({ 'shell.overlay': 1, 'shell.quota-notice': 1, 'settings.models.sign-in': 1, 'settings.section': 1 })
   } finally {
     revoke(guards)
     for (const dispose of lifetime.reverse()) dispose()
   }
 })
 
-it('drops reads a revoked grant started, and the next grant shows no account section before its first frame', async () => {
+it('drops reads a revoked grant started, and the next grant shows the signed-out account section before its first frame', async () => {
   vi.stubEnv('DSH_CLIENT_VERSION', '0.0.0-test')
   const links = { usageUrl: 'https://example.test/usage', topUpUrl: 'https://example.test/top_up' }
   const signedIn: AccountView = { status: 'credential-stored', links, attempt: null }
@@ -138,7 +138,7 @@ it('drops reads a revoked grant started, and the next grant shows no account sec
         return () => { dispose?.() }
       },
       register: (entry: { readonly name: string; readonly inject?: () => AccountSectionInjected }) => {
-        if (entry.name === 'settings.launcher') operations = entry.inject?.()
+        if (entry.name === 'shell.overlay') operations = entry.inject?.()
         registered.set(entry.name, (registered.get(entry.name) ?? 0) + 1)
         return () => { registered.set(entry.name, registered.get(entry.name)! - 1) }
       },
@@ -188,7 +188,7 @@ it('drops reads a revoked grant started, and the next grant shows no account sec
     expect(operations!.hooks.account.getSnapshot().details).toBeUndefined()
 
     grant(guards)
-    expect(registered.get('settings.section')).toBe(0)
+    expect(registered.get('settings.section')).toBe(1)
     firstFrames[1]!.release()
     await firstFrames[1]!.accepted
     expect(registered.get('settings.section')).toBe(1)
@@ -232,7 +232,7 @@ function revocationHarness(scripts: StreamScript[]) {
         return () => { dispose?.() }
       },
       register: (entry: { readonly name: string; readonly inject?: () => AccountSectionInjected }) => {
-        if (entry.name === 'settings.launcher') operations = entry.inject?.()
+        if (entry.name === 'shell.overlay') operations = entry.inject?.()
         registered.set(entry.name, (registered.get(entry.name) ?? 0) + 1)
         return () => { registered.set(entry.name, registered.get(entry.name)! - 1) }
       },

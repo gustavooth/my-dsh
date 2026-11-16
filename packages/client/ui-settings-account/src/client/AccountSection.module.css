@@ -195,6 +195,13 @@
   line-height: 18px;
 }
 
+.signedOutActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
 .signInButton {
   min-width: 72px;
   font-weight: 500;

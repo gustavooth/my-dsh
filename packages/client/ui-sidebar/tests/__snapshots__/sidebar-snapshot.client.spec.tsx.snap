@@ -154,26 +154,26 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
           <span
             class="brandName"
           >
-            <div
-              data-slot="sidebar.brand.name"
-              style="display: contents;"
+            <span
+              class="localBuildBrand copyVersion"
+              data-copy-version="true"
             >
-              <span
-                class="localBuildBrand copyVersion"
-                data-copy-version="true"
+              <div
+                data-slot="sidebar.brand.name"
+                style="display: contents;"
               >
                 <span
                   class="localBuildTitle"
                 >
                   DSH Local Build
                 </span>
-                <span
-                  class="buildVersion"
-                >
-                  1.2.3-rc.4-abc1234-dirty
-                </span>
+              </div>
+              <span
+                class="buildVersion"
+              >
+                1.2.3-rc.4-abc1234-dirty
               </span>
-            </div>
+            </span>
           </span>
         </span>
       </button>
@@ -445,26 +445,26 @@ exports[`sidebar shell snapshots > renders the expanded column (wordmark, capsul
           <span
             class="brandName"
           >
-            <div
-              data-slot="sidebar.brand.name"
-              style="display: contents;"
+            <span
+              class="localBuildBrand copyVersion"
+              data-copy-version="true"
             >
-              <span
-                class="localBuildBrand copyVersion"
-                data-copy-version="true"
+              <div
+                data-slot="sidebar.brand.name"
+                style="display: contents;"
               >
                 <span
                   class="localBuildTitle"
                 >
                   DSH Local Build
                 </span>
-                <span
-                  class="buildVersion"
-                >
-                  1.2.3-rc.4-abc1234-dirty
-                </span>
+              </div>
+              <span
+                class="buildVersion"
+              >
+                1.2.3-rc.4-abc1234-dirty
               </span>
-            </div>
+            </span>
           </span>
         </span>
       </button>
@@ -611,26 +611,26 @@ exports[`sidebar shell snapshots > renders the expanded column in the default lo
           <span
             class="brandName"
           >
-            <div
-              data-slot="sidebar.brand.name"
-              style="display: contents;"
+            <span
+              class="localBuildBrand copyVersion"
+              data-copy-version="true"
             >
-              <span
-                class="localBuildBrand copyVersion"
-                data-copy-version="true"
+              <div
+                data-slot="sidebar.brand.name"
+                style="display: contents;"
               >
                 <span
                   class="localBuildTitle"
                 >
                   DSH 本地构建
                 </span>
-                <span
-                  class="buildVersion"
-                >
-                  1.2.3-rc.4-abc1234-dirty
-                </span>
+              </div>
+              <span
+                class="buildVersion"
+              >
+                1.2.3-rc.4-abc1234-dirty
               </span>
-            </div>
+            </span>
           </span>
         </span>
       </button>

@@ -13,9 +13,6 @@ import type {} from '@deepseek-ai/dsh-client-ui-slots'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
-    /** Optional sidebar account launcher; opens the shell-owned settings panel. */
-    'settings.launcher': { kind: 'single'; scope: 'root'; owner: SettingsLauncherOwnerProps }
-
     /**
      * The sidebar-foot trigger row content: icon + label, supplied as slot
      * content (the accessible name comes from the content — rail state
@@ -25,6 +22,13 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * the shipped composition always registers the seat).
      */
     'settings.trigger': { kind: 'single'; scope: 'root'; owner: SettingsTriggerOwnerProps }
+    /**
+     * Notifications anchored above the sidebar-foot trigger row. The shell
+     * owns the anchored position, keeps the contribution mounted while the rail
+     * hides it, and supplies settings navigation; the registrant owns its
+     * markup, visibility, and lifecycle.
+     */
+    'settings.trigger.notifications': { kind: 'single'; scope: 'root'; owner: SettingsTriggerNotificationsOwnerProps }
     /**
      * The panel title text seat. Content renders inside the nav heading row;
      * the dialog's accessible name points at that node via aria-labelledby.
@@ -118,6 +122,12 @@ export interface SettingsTriggerOwnerProps {
   wide: boolean
 }
 
+/** Owner share of the sidebar-foot notification seat: settings navigation. */
+export interface SettingsTriggerNotificationsOwnerProps {
+  /** @param sectionId - section to open; absent uses the shell's default section. */
+  openSettings: (sectionId?: string) => void
+}
+
 /** Owner share of the header title seat (the shell supplies nothing). */
 export interface SettingsHeaderOwnerProps {
   /** Marker field: header owner props are intentionally empty. */
@@ -127,13 +137,15 @@ export interface SettingsHeaderOwnerProps {
 /**
  * Owner share of a settings section entry. The shell owns modal visibility
  * and navigation; a section's data arrives through its own inject faces and
- * stores. `close` is the one shell affordance a section receives, for flows
- * that leave settings altogether (starting a session from a section) — the
- * onboarding coordinator's `openSection`/`complete` precedent, inverted.
+ * stores. `close` is the shell affordance for flows that leave settings
+ * altogether (starting a session from a section); `openOnboarding` lets a
+ * section hand its flow to a registered onboarding editor.
  */
 export interface SettingsSectionOwnerProps {
   /** Close the settings panel (the shell owns the open state). */
   close: () => void
+  /** @param id - registered onboarding editor to open explicitly. */
+  openOnboarding: (id: string) => void
 }
 
 /** Icon presentation supplied by the settings navigation row. */
@@ -154,18 +166,4 @@ export interface SettingsOnboardingOwnerProps {
   complete: () => void
   /** Open the settings panel directly on one registered section. */
   openSection: (id: string) => void
-}
-
-/** Sidebar launcher geometry and settings navigation. */
-export interface SettingsLauncherOwnerProps {
-  /** Whether the sidebar shows labels. */
-  wide: boolean
-  /** Whether the settings dialog covers the sidebar; a launcher may treat a false-to-true edge as one Settings entry. */
-  settingsOpen: boolean
-  /** Effective Settings key labels and accessible combination; omitted when unbound. */
-  settingsShortcut?: { readonly keys: readonly string[]; readonly aria?: string | undefined }
-  /** @param sectionId - section to open; absent uses the shell's default section. */
-  openSettings: (sectionId?: string) => void
-  /** @param id - registered onboarding editor to open explicitly. */
-  openOnboarding: (id: string) => void
 }

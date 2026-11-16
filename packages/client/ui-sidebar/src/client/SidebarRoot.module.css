@@ -228,8 +228,8 @@
    single darwin rule carries the drag over its own box — below the top strip
    (40–100px: the strip's 52px foot with the row's -12px tuck). The brand rides
    that box (SidebarRoot renders the wordmark as a plain span there, so the
-   drag-row controls rule never subtracts it; only the local-build
-   fallbacks opt out through .copyVersion); the dedicated New
+   drag-row controls rule never subtracts it; only a local build's copying mark
+   and name opt out through .copyVersion); the dedicated New
    Session button below keeps the pointer and keyboard paths. Safe as a drag
    source: it precedes the sidebar's overlay slots in document order, so their
    no-drag still wins. */
@@ -280,12 +280,12 @@
 }
 
 /* Mark and name are independent slots; the shell owns their shared baseline,
-   spacing, and height so either occupant can vary in width. */
+   spacing, and top alignment so either occupant can vary in width or own a
+   badge line beneath it. */
 .brandIdentity {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 5px;
-  height: 24px;
   min-width: 0;
 }
 
@@ -301,7 +301,7 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  height: 24px;
+  min-height: 24px;
   font-size: 18px;
   font-weight: 600;
   line-height: 24px;
@@ -320,8 +320,7 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  gap: 1px;
-  height: 24px;
+  gap: 3px;
   white-space: nowrap;
 }
 

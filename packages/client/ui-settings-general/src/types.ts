@@ -44,10 +44,14 @@ export interface DesktopUpdateView {
 /** Shell-owned channel choices exposed through the isolated preload. */
 export type DesktopUpdateChannel = 'nightly' | 'stable'
 
+/** Destination sealed into the installer; GitHub releases expose one Latest release. */
+export type DesktopUpdateFeed = 'github' | 'generic'
+
 /** Current runtime selection and application status; failure never implies a successful switch. */
 export interface DesktopChannelState {
   readonly channel: DesktopUpdateChannel | null
   readonly packagedChannel: DesktopUpdateChannel
+  readonly feed: DesktopUpdateFeed
   readonly changing: boolean
   readonly error?: 'read' | 'format' | 'channel' | 'cleanup'
 }

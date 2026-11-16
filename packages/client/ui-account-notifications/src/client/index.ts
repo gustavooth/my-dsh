@@ -41,28 +41,42 @@ export function apply(ctx: Context): void {
     },
     publish: (notices) => { snapshot = notices; for (const listener of listeners) listener() },
   })
+  // The stack is visible only for a signed-in account outside onboarding; the
+  // anchor supplies navigation, not visibility.
+  let visible = false
+  const visibilityListeners = new Set<() => void>()
+  const setVisible = (next: boolean): void => {
+    if (next === visible) return
+    visible = next
+    for (const listener of visibilityListeners) listener()
+  }
   const update = (state: AccountUiState, reset: boolean): void => {
     const signedIn = state.view?.status === 'credential-stored' && !state.failed
     if (reset || !signedIn) controller.end()
     if (signedIn && reset) controller.begin()
+    setVisible(signedIn && state.onboarding !== true && state.desktopOnboardingVisible !== true)
   }
   ctx.effect(() => () => { controller.end() }, 'notifications: account lifetime')
   ctx.on('account-ui/change', update)
   ctx.on('account-ui/refresh', () => controller.refresh())
   ctx.on('locale/change', (state) => { void controller.setLocale(state.active) })
   update(ctx.accountUi.getSnapshot(), true)
-  const state = {
+  const notices = {
     getSnapshot: () => snapshot,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
   }
+  const active = {
+    getSnapshot: () => visible,
+    subscribe: (listener: () => void) => { visibilityListeners.add(listener); return () => { visibilityListeners.delete(listener) } },
+  }
   const injected: AccountNotificationsInjected = {
-    hooks: { notices: state },
+    hooks: { notices, active },
     shown: (id) => { controller.shown(id) },
     ctaClicked: (id) => { controller.ctaClicked(id) },
     dismiss: (id) => { controller.dismiss(id) },
   }
-  ctx.slots.inject('settings.launcher.notifications', () => ctx.slots.register({
-    name: 'settings.launcher.notifications', locale: 'account.notifications',
+  ctx.slots.inject('settings.trigger.notifications', () => ctx.slots.register({
+    name: 'settings.trigger.notifications', locale: 'account.notifications',
     inject: () => injected,
   }, AccountNotifications))
 }

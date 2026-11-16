@@ -32,8 +32,8 @@ const view: AccountView = {
 const stored: AccountView = { ...view, status: 'credential-stored' }
 const profile: AccountDetails['profile'] = { status: 'ready', value: { id: 'account-user' as AccountUserId, name: 'User', contact: null } }
 function operations(c: TestClient): AccountSectionInjected {
-  const injected: object = c.ctx.slots.entries('settings.launcher')[0]!.inject!()
-  return injected as AccountSectionInjected
+  const entry = c.ctx.slots.entries('shell.overlay').find(candidate => candidate.options.id === 'account.alerts')!
+  return entry.inject!() as unknown as AccountSectionInjected
 }
 /** The account take-over registered into the Chat-owned frame-wide quota notice chain. */
 function quotaNoticeEntry(c: TestClient) {
@@ -60,8 +60,10 @@ it('registers account sign-in in a plain browser without the Desktop-only surfac
   for (const reload of [false, true]) {
     if (reload) await c.reload(SELF)
     await c.mock.streams.opened('account/watch', reload ? 2 : 1)
-    expect(c.ctx.slots.entries('settings.launcher')).toHaveLength(1)
+    expect(c.ctx.slots.entries('settings.trigger.notifications')).toHaveLength(1)
     expect(c.ctx.slots.entries('settings.models.sign-in')).toHaveLength(1)
+    expect(c.ctx.slots.entries('settings.section').some(entry => entry.options.id === 'account')).toBe(true)
+    expect(c.ctx.slots.entries('shell.overlay').some(entry => entry.options.id === 'account.alerts')).toBe(true)
     expect(quotaNoticeEntry(c)).toBeDefined()
     expect(platformHostEntry(c)).toBeUndefined()
     expect(c.ctx.slots.entries('shell.overlay').some(entry => entry.options.id === 'desktop-onboarding')).toBe(false)
@@ -72,7 +74,8 @@ it('registers account sign-in in a plain browser without the Desktop-only surfac
 withoutAccountAccess('opens no account stream and registers no account surface while the current Peer may not watch the account', async ({ start }) => {
   const c = await start()
   expect(c.mock.streams.end('account/watch')).toBe(0)
-  expect(c.ctx.slots.entries('settings.launcher')).toHaveLength(0)
+  expect(c.ctx.slots.entries('settings.section').some(entry => entry.options.id === 'account')).toBe(false)
+  expect(c.ctx.slots.entries('shell.overlay').some(entry => entry.options.id === 'account.alerts')).toBe(false)
   expect(quotaNoticeEntry(c)).toBeUndefined()
   expect(c.ctx.slots.entries('settings.models.sign-in')).toHaveLength(0)
   expect(c.ctx.slots.entries('settings.section').some(entry => entry.options.id === 'account')).toBe(false)
@@ -151,7 +154,8 @@ it('shares account actions across seats, publishes dialog ownership, and opens c
   expect(signedOutAgain.searchParams.has('prefill_uid')).toBe(false)
   expect(signedOutAgain.searchParams.get('hide_uid')).toBe('1')
   await c.unload(SELF)
-  expect(c.ctx.slots.entries('settings.launcher')).toHaveLength(0)
+  expect(c.ctx.slots.entries('settings.section').some(entry => entry.options.id === 'account')).toBe(false)
+  expect(c.ctx.slots.entries('shell.overlay').some(entry => entry.options.id === 'account.alerts')).toBe(false)
 }, 60_000)
 
 it('prefills the native device description from the Desktop bridge on every click', async ({ start }) => {

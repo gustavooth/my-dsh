@@ -109,7 +109,6 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
     'parseSessionLog', 'prepareSessionSnapshotFixtureForComparison', 'resolveScriptedEntry',
   ],
   '@deepseek-ai/dsh-llm-retry': ['RetryId'],
-  '@deepseek-ai/dsh-lsp': ['LspProviderId', 'finalExtension'],
   '@deepseek-ai/dsh-mcp-client': [
     'ReconnectSchema', 'SERVER_NAME_PATTERN', 'assertTemplateSyntax', 'connectionStatusOf', 'createMcpToolDefinition',
     'probeServer', 'resolveReconnectPolicy',
@@ -180,7 +179,6 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
   '@deepseek-ai/dsh-storage': ['BackendRegistry', 'UNIT_NAME_RE', 'storageBackendServiceKey'],
   '@deepseek-ai/dsh-storage-domain': ['DomainFacility', 'defineDomain', 'descriptorOf', 'domainTable'],
   '@deepseek-ai/dsh-storage-json': ['JsonStorageBackend'],
-  '@deepseek-ai/dsh-storage-sqlite': ['STORAGE_SQLITE_SCHEMA_VERSION', 'SqliteStorageBackend'],
   '@deepseek-ai/dsh-subagent': [
     'AssistantOutputFold', 'NO_START_CAPABILITIES', 'ROOT_AGENT_NAME', 'STRUCTURED_OUTPUT_TOOL',
     'SUBAGENT_DESCRIPTOR_VERSION', 'SubagentRunId', 'appendDelegatedPolicyOverrides', 'applyChildComposition',
@@ -206,10 +204,6 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
     'formatGrepOutput', 'parseGlobArgs', 'parseGrepArgs', 'parseGrepMatches', 'presentGlobCall', 'presentGlobResult',
     'presentGrepCall', 'presentGrepResult', 'previewLine', 'resolveRgPath', 'runRipgrep', 'sampleAcrossTopLevel',
     'toWorkdirRelative', 'trySaveFormattedResult',
-  ],
-  '@deepseek-ai/dsh-tool-lsp': [
-    'DEFAULT_LSP_TOOL_TIMEOUT_MS', 'DEFAULT_MAX_LOCATIONS', 'DEFAULT_MAX_RESULT_CHARS', 'LSP_OPERATIONS',
-    'LSP_PROMPT_TEXT', 'formatHover', 'formatLocations', 'parseLspArgs', 'presentLspCall', 'renderUri',
   ],
   '@deepseek-ai/dsh-tool-session-query': ['DEFAULT_MAX_SEARCH_RESULTS', 'DEFAULT_SEARCH_TIMEOUT_MS'],
   '@deepseek-ai/dsh-tool-terminal': ['DEFAULT_MAX_RESULT_BYTES', 'MIN_MAX_RESULT_BYTES'],

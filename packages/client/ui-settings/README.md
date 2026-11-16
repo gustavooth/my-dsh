@@ -42,7 +42,7 @@ A page that edits a namespace another plugin owns registers through `ctx.configF
 <a id="filling-the-settings-slots"></a>
 ### Filling the settings slots
 
-A settings surface registers into the slot types this package declares. The shell (`sidebar.settings` occupant, navigation, chrome) lives in ui-settings-general; feature pages register `settings.section` contributions; the Plugins section hosts `settings.plugins.tab` pages; onboarding steps register `settings.onboarding`. Cross-namespace surfaces (schema introspection, the served-namespace directory, `hasDocument`) read the same mirror through `ctx.configForms.describe()`.
+A settings surface registers into the slot types this package declares. The shell (`sidebar.settings` occupant, navigation, chrome) lives in ui-settings-general; it occupies the trigger content, header, close, and footer-notification seats, feature pages register `settings.section` contributions, the Plugins section hosts `settings.plugins.tab` pages, and onboarding steps register `settings.onboarding`. Cross-namespace surfaces (schema introspection, the served-namespace directory, `hasDocument`) read the same mirror through `ctx.configForms.describe()`.
 
 To customize a page's navigation icon, use `ctx.slots.inject('settings.section.icon', ...)` and register an icon component with the same `id` as its `settings.section` contribution. Unmatched ids never render, and the icon's `label` option is not displayed. The component receives `size` in pixels and `active`; the shell owns the button, label, and decorative icon wrapper. Without a matching icon registration, the shell renders its default glyph. Disposing the icon contribution restores that glyph.
 
@@ -55,7 +55,7 @@ A committed write folds its answer into the shared mirror. Refused writes refres
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
-The optional `settings.launcher` contribution receives sidebar geometry, whether the open Settings panel covers the sidebar, the settings navigation callbacks, and the effective Settings key labels and accessible combination. The shell omits shortcut presentation for an unbound command and retains its plain Settings trigger when no launcher is registered. The launcher can pass a section ID to openSettings to open that section directly; an absent ID uses the default section.
+The shell renders one Settings trigger. A `settings.trigger.notifications` contribution anchors above that trigger row and receives `openSettings`, which opens a named section directly; an absent ID uses the default section. A `settings.section` entry receives `close` and `openOnboarding`, so a page can hand its flow to a registered onboarding editor.
 
 <details>
 <summary>Implementation internals — click to expand</summary>

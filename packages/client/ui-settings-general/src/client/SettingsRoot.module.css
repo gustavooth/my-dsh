@@ -13,6 +13,15 @@
   margin: 8px 0 10px;
 }
 
+/* Notification stack anchored above the trigger row; the row's inset is the
+   stack's, so it stays put across rail and drawer widths. */
+.notifications {
+  position: absolute;
+  inset-inline: 0;
+  bottom: calc(100% + 4px);
+  z-index: 1;
+}
+
 .trigger {
   flex: 1;
   min-width: 0;

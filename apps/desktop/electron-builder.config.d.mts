@@ -38,6 +38,11 @@ export interface DesktopElectronBuilderConfig {
     readonly sign: boolean
     readonly writeUpdateInfo: boolean
   }
+  readonly linux: {
+    readonly executableName: string
+    readonly icon: string
+    readonly target: readonly ['deb']
+  }
   readonly win: {
     readonly forceCodeSigning: boolean
     readonly signtoolOptions: {

@@ -42,6 +42,7 @@ type Step = { id: string; order: number }
 /** Slot-content stand-ins: the shell renders whatever the seats contribute. */
 const SEAT_CONTENT: Record<string, string> = {
   'settings.trigger': 'Settings',
+  'settings.trigger.notifications': 'Notifications',
   'settings.header': 'Settings Title',
   'settings.action': 'Open configuration file',
   'settings.close': 'Close',
@@ -504,8 +505,9 @@ describe('SettingsPanel navigation', () => {
 
 it('explicitly reopens one onboarding editor during an existing session', () => {
   const { renderSlot } = mount({ onboardingActive: false })
-  const launcher = renderSlot.mock.calls.find(call => call[0] === 'settings.launcher')
-  act(() => { (launcher?.[1] as { openOnboarding: (id: string) => void }).openOnboarding('credential') })
+  openPanel()
+  const section = renderSlot.mock.calls.filter(call => call[0] === 'settings.section').at(-1)
+  act(() => { (section?.[1] as { openOnboarding: (id: string) => void }).openOnboarding('credential') })
   const call = renderSlot.mock.calls.filter(call => call[0] === 'settings.onboarding').at(-1)
   expect(call?.[1]).toMatchObject({ stepId: 'credential', explicit: true })
   act(() => { (call?.[1] as { complete: () => void }).complete() })
@@ -513,22 +515,34 @@ it('explicitly reopens one onboarding editor during an existing session', () => 
   expect(screen.queryByTestId('onboarding')).toBeNull()
 })
 
-it('opens Account from the contributed sidebar launcher', () => {
+it('anchors sidebar notifications above the trigger row and opens the account section from them', () => {
   const { renderSlot } = mount({ rows: [{ id: 'account', order: -10, label: 'Account' }] })
-  const launcher = renderSlot.mock.calls.find(call => call[0] === 'settings.launcher')!
-  expect(launcher[1]).toMatchObject({ settingsOpen: false })
-  act(() => { (launcher[1] as { openSettings: () => void }).openSettings() })
+  const notifications = renderSlot.mock.calls.find(call => call[0] === 'settings.trigger.notifications')!
+  expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy()
+  act(() => { (notifications[1] as { openSettings: (sectionId?: string) => void }).openSettings() })
   expect(screen.getByTestId('section-account')).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Account' }).querySelector('svg')).not.toBeNull()
-  expect(renderSlot.mock.calls.filter(call => call[0] === 'settings.launcher').at(-1)?.[1]).toMatchObject({ settingsOpen: true })
   fireEvent.keyDown(document, { key: 'Escape' })
-  expect(renderSlot.mock.calls.filter(call => call[0] === 'settings.launcher').at(-1)?.[1]).toMatchObject({ settingsOpen: false })
+  expect(screen.queryByTestId('section-account')).toBeNull()
 })
 
-it('opens the section requested by the contributed sidebar launcher', () => {
+it('keeps the notification seat mounted above the trigger row while the rail hides it', () => {
+  const wide = mount({ wide: true })
+  const shown = screen.getByText('Notifications')
+  expect(shown.closest('[hidden]')).toBeNull()
+  const seat = wide.renderSlot.mock.calls.filter(call => call[0] === 'settings.trigger.notifications').at(-1)
+  expect(seat?.[1]).toEqual({ openSettings: expect.any(Function) })
+  wide.view.unmount()
+
+  mount({ wide: false })
+  const hidden = screen.getByText('Notifications')
+  expect(hidden.closest('[hidden]')).not.toBeNull()
+})
+
+it('opens the section requested by the notification seat', () => {
   const { renderSlot } = mount({ rows: [{ id: 'general', order: 0, label: 'General' }, { id: 'account', order: 1, label: 'Account' }] })
-  const launcher = renderSlot.mock.calls.find(call => call[0] === 'settings.launcher')!
-  act(() => { (launcher[1] as { openSettings: (sectionId?: string) => void }).openSettings('account') })
+  const notifications = renderSlot.mock.calls.find(call => call[0] === 'settings.trigger.notifications')!
+  act(() => { (notifications[1] as { openSettings: (sectionId?: string) => void }).openSettings('account') })
   expect(screen.getByTestId('section-account')).toBeTruthy()
   expect(screen.queryByTestId('section-general')).toBeNull()
 })
@@ -539,17 +553,4 @@ it('shows the effective settings binding on focus and exposes it to assistive te
   expect(trigger.getAttribute('aria-keyshortcuts')).toBe('Meta+,')
   fireEvent.focus(trigger)
   expect(screen.getByRole('tooltip').getAttribute('aria-label')).toBe('Settings ⌘ ,')
-})
-
-it('passes current Settings key labels to the launcher and removes them when unbound', () => {
-  const row: ShortcutCatalogEntry = { id: 'settings.open' as ShortcutCommandId, label: 'Open settings', aliases: [], keys: ['⌘', ','], aria: 'Meta+,', binding: { code: 'Comma', modifiers: ['meta'] }, modified: false, conflicts: [], issue: null }
-  const { renderSlot, setShortcuts } = mount({ shortcuts: [row] })
-  const launcher = () => renderSlot.mock.calls.filter(call => call[0] === 'settings.launcher').at(-1)?.[1]
-  expect(launcher()).toMatchObject({ settingsShortcut: { keys: ['⌘', ','], aria: 'Meta+,' } })
-
-  setShortcuts([{ ...row, keys: ['Ctrl', 'Shift', 'S'], aria: 'Control+Shift+S', binding: { code: 'KeyS', modifiers: ['control', 'shift'] }, modified: true }])
-  expect(launcher()).toMatchObject({ settingsShortcut: { keys: ['Ctrl', 'Shift', 'S'], aria: 'Control+Shift+S' } })
-
-  setShortcuts([{ ...row, keys: [], aria: undefined, binding: null, modified: true }])
-  expect(launcher()).not.toHaveProperty('settingsShortcut')
 })

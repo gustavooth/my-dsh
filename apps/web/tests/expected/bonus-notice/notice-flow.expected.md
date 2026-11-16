@@ -17,7 +17,7 @@ open.usage-link={{origin}}/usage
 open.closed settings cards=1 acks=2
 open.dismissed cards=0 acks=2
 reopen.open gets=1 summaries=1 cards=0 acks=2
-reopen.section-switch gets=0 summaries=0 amount=true cards=0 acks=2
+reopen.section-switch gets=1 summaries=1 amount=true cards=0 acks=2
 reopen.closed cards=0 acks=2
 topup.open gets=1 summaries=1
 topup.returned bridge=open:top-up,close cards=0

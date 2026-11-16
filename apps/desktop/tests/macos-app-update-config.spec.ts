@@ -10,7 +10,7 @@ import {
 } from '../scripts/macos-app-update-config.mjs'
 
 const roots: string[] = []
-const update = { publicUrl: 'https://desktop-updates.example.com/dsh-desk/feeds/mac-arm64/' }
+const update = { provider: 'generic' as const, publicUrl: 'https://desktop-updates.example.com/dsh-desk/feeds/mac-arm64/' }
 
 async function fixture(): Promise<{ appPath: string; resourcesDir: string }> {
   const root = await mkdtemp(join(tmpdir(), 'desktop-macos-update-config-'))
@@ -33,6 +33,25 @@ describe('macOS packaged updater configuration', () => {
       [{ provider: 'generic', channel: 'invalid', url: update.publicUrl }]]) {
       expect(() => resolveMacOSAppUpdateFeed(publish)).toThrow(/macOS update config/u)
     }
+  })
+
+  it('resolves and seals a GitHub release feed', async () => {
+    const github = { provider: 'github' as const, owner: 'gustavooth', repo: 'my-dsh' }
+    expect(resolveMacOSAppUpdateFeed([{ ...github, releaseType: 'release' }])).toEqual(github)
+    for (const publish of [undefined, [], [{ provider: 'github', owner: '', repo: 'deepseek-harness' }],
+      [{ provider: 'github', owner: 'gustavooth', repo: '' }]]) {
+      expect(() => resolveMacOSAppUpdateFeed(publish)).toThrow(/macOS update config/u)
+    }
+    const paths = await fixture()
+    expect(createMacOSAppUpdateConfig(github, 'deepseek-harness-updater')).toEqual({
+      ...github,
+      updaterCacheDirName: 'deepseek-harness-updater',
+    })
+    await writeMacOSAppUpdateConfig(paths.resourcesDir, github, 'deepseek-harness-updater')
+    await expect(verifyMacOSAppUpdateConfig(paths.appPath, github, 'deepseek-harness-updater')).resolves.toBeUndefined()
+    await expect(verifyMacOSAppUpdateConfig(paths.appPath, { ...github, owner: 'someone-else' }))
+      .rejects.toThrow(/does not match/u)
+    await expect(verifyMacOSAppUpdateConfig(paths.appPath, update)).rejects.toThrow(/does not match/u)
   })
 
   it('writes and verifies the fixed release feed before signing', async () => {

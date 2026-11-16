@@ -212,7 +212,7 @@ describe('ui-settings-general apply', () => {
 
   it('removes the Desktop channel row and shell subscription when its plugin unloads', async ({ mock, start }) => {
     const unsubscribe = vi.fn()
-    const state = { channel: 'nightly', packagedChannel: 'nightly', changing: false } as const
+    const state = { channel: 'nightly', packagedChannel: 'nightly', feed: 'generic', changing: false } as const
     const save = vi.fn(async () => ({ kind: 'applied' as const, state }))
     const channels: DesktopChannelBridge = { get: async () => state, set: save,
       subscribe: () => unsubscribe }
